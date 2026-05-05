@@ -48,9 +48,9 @@ Deploy this as a public web/PWA first. Do not start with App Store or Google Pla
    - Environment variable: `NODE_ENV=production`
    - Environment variable: `DATA_DIR=/var/data`
 
-The `render.yaml` uses a small paid `starter` web service with a mounted disk at `/var/data` so JSON validation data can survive deploys/restarts. Render does not support persistent disks on free web services.
+The `render.yaml` is configured for Render's free web service tier. This is fine for a public smoke test, but collected JSON data can reset on restarts or deploys because free Render web services do not support persistent disks.
 
-For a free smoke test, change `plan: starter` to `plan: free`, remove the `disk:` block, and remove the `DATA_DIR=/var/data` env var. The app will run, but collected JSON data can reset on restarts or deploys.
+When the app starts showing real signal, upgrade to a paid instance with a persistent disk or move the data layer to Postgres.
 
 ## Production Caveat
 

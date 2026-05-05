@@ -2,16 +2,10 @@ services:
   - type: web
     name: airportready
     env: node
-    plan: starter
+    plan: free
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATA_DIR
-        value: /var/data
-    disk:
-      name: airportready-data
-      mountPath: /var/data
-      sizeGB: 1
