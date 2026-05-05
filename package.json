@@ -1,0 +1,14 @@
+{
+  "name": "airportready-departure-planner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MVP for AirportReady departure planning and crowd wait reports.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node --check server.js && node --check app.js && node --check airport-page.js && node --check admin.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

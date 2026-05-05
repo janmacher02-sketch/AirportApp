@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    <meta
+      name="description"
+      content="__AIRPORT_NAME__ security wait time, live crowd reports, and airport departure planning for __AIRPORT_CODE__."
+    />
+    <title>__AIRPORT_NAME__ security wait time (__AIRPORT_CODE__) | AirportReady</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-airport-code="__AIRPORT_CODE__">
+    <header class="public-topbar">
+      <a class="brand" href="/">
+        <span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span>
+        <span>AirportReady</span>
+      </a>
+      <nav class="public-nav" aria-label="Public navigation">
+        <a href="/">Planner</a>
+        <a href="/admin">Admin</a>
+      </nav>
+    </header>
+
+    <main class="public-page">
+      <section class="airport-hero">
+        <div>
+          <p class="eyebrow">Live airport page</p>
+          <h1>__AIRPORT_NAME__ security wait time</h1>
+          <p class="public-copy">
+            Current __AIRPORT_CODE__ estimate for security, crowd confidence, and when to arrive before departure.
+          </p>
+          <div class="public-actions">
+            <a class="primary-link" href="/?airport=__AIRPORT_CODE__">Plan my departure</a>
+            <a class="secondary-link" href="#report">Report wait time</a>
+          </div>
+        </div>
+        <aside class="public-status-card">
+          <p class="eyebrow">Current estimate</p>
+          <strong id="airport-wait">__AIRPORT_WAIT__</strong>
+          <span id="airport-status">__AIRPORT_STATUS__</span>
+          <p>Confidence: <b id="airport-confidence">__AIRPORT_CONFIDENCE__</b></p>
+          <p>Updated: <b id="airport-updated">__AIRPORT_UPDATED__</b></p>
+        </aside>
+      </section>
+
+      <section class="public-grid">
+        <article class="public-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Airport details</p>
+              <h2 id="airport-name">__AIRPORT_NAME__ (__AIRPORT_CODE__)</h2>
+            </div>
+            <span class="confidence-chip" id="airport-city">__AIRPORT_CITY__</span>
+          </div>
+          <div class="security-summary" id="airport-metrics"></div>
+          <div class="chart" id="airport-chart" aria-label="Wait time chart"></div>
+        </article>
+
+        <article class="public-card" id="report">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Crowd report</p>
+              <h2>Help update __AIRPORT_CODE__</h2>
+            </div>
+          </div>
+          <form class="report-form" id="airport-report-form">
+            <fieldset class="wait-options">
+              <legend>Observed security wait</legend>
+              <label><input type="radio" name="wait" value="5" />0-5 min</label>
+              <label><input type="radio" name="wait" value="10" />5-10 min</label>
+              <label><input type="radio" name="wait" value="20" checked />10-20 min</label>
+              <label><input type="radio" name="wait" value="35" />20-40 min</label>
+              <label><input type="radio" name="wait" value="50" />40+ min</label>
+            </fieldset>
+            <div class="field-block">
+              <label for="airport-page-email">Trip Pass waitlist</label>
+              <input id="airport-page-email" type="email" placeholder="you@example.com" />
+              <p class="helper">Optional: get launch updates for live leave-now alerts.</p>
+            </div>
+            <button class="primary-action" type="submit">
+              <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+              <span>Submit report</span>
+            </button>
+          </form>
+        </article>
+      </section>
+
+      <section class="public-card">
+        <div class="card-header">
+          <div>
+            <p class="eyebrow">Recent reports</p>
+            <h2>Latest __AIRPORT_CODE__ crowd signals</h2>
+          </div>
+          <span class="confidence-chip" id="airport-report-count">0 reports</span>
+        </div>
+        <div class="report-log" id="airport-report-log"></div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/airport-page.js" defer></script>
+  </body>
+</html>

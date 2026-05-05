@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    <title>AirportReady Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/">
+        <span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span>
+        <span>AirportReady</span>
+      </a>
+      <nav class="public-nav" aria-label="Admin navigation">
+        <a href="/">Planner</a>
+        <a href="/airports/prg">PRG page</a>
+      </nav>
+    </header>
+
+    <main class="admin-page">
+      <section class="admin-hero">
+        <div>
+          <p class="eyebrow">Validation dashboard</p>
+          <h1>AirportReady MVP signals</h1>
+          <p class="public-copy">Local metrics from trips, reports, waitlist signups, and user intent events.</p>
+        </div>
+        <button class="secondary-link button-reset" type="button" id="refresh-admin">Refresh</button>
+      </section>
+
+      <section class="admin-stats" id="admin-totals"></section>
+
+      <section class="admin-grid">
+        <article class="public-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Intent</p>
+              <h2>Events by type</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="events-by-type"></div>
+        </article>
+
+        <article class="public-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Airport demand</p>
+              <h2>Signals by airport</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="signals-by-airport"></div>
+        </article>
+
+        <article class="public-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Recent</p>
+              <h2>Latest events</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="latest-events"></div>
+        </article>
+
+        <article class="public-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Recent</p>
+              <h2>Latest waitlist</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="latest-waitlist"></div>
+        </article>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/admin.js" defer></script>
+  </body>
+</html>

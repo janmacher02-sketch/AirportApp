@@ -1,0 +1,260 @@
+[
+  {
+    "code": "PRG",
+    "name": "Prague Airport",
+    "city": "Prague",
+    "terminals": [
+      "T1",
+      "T2"
+    ],
+    "selectedTerminal": "T2",
+    "wait": [
+      18,
+      25
+    ],
+    "trend": "Rising",
+    "confidence": "Medium",
+    "reports": 12,
+    "updated": 4,
+    "status": "Busy",
+    "route": 35,
+    "checkin": 24,
+    "passport": 12,
+    "buffer": 20,
+    "trendData": [
+      8,
+      12,
+      14,
+      18,
+      22,
+      27,
+      31,
+      25,
+      19,
+      16,
+      14,
+      11
+    ]
+  },
+  {
+    "code": "VIE",
+    "name": "Vienna International",
+    "city": "Vienna",
+    "terminals": [
+      "T1",
+      "T3"
+    ],
+    "selectedTerminal": "T3",
+    "wait": [
+      9,
+      14
+    ],
+    "trend": "Stable",
+    "confidence": "High",
+    "reports": 34,
+    "updated": 2,
+    "status": "Normal",
+    "route": 28,
+    "checkin": 20,
+    "passport": 9,
+    "buffer": 18,
+    "trendData": [
+      7,
+      9,
+      11,
+      12,
+      13,
+      14,
+      12,
+      10,
+      9,
+      8,
+      10,
+      11
+    ]
+  },
+  {
+    "code": "BTS",
+    "name": "Bratislava Airport",
+    "city": "Bratislava",
+    "terminals": [
+      "Main"
+    ],
+    "selectedTerminal": "Main",
+    "wait": [
+      7,
+      12
+    ],
+    "trend": "Falling",
+    "confidence": "Medium",
+    "reports": 9,
+    "updated": 7,
+    "status": "Low",
+    "route": 22,
+    "checkin": 18,
+    "passport": 8,
+    "buffer": 18,
+    "trendData": [
+      18,
+      16,
+      13,
+      12,
+      11,
+      10,
+      8,
+      7,
+      9,
+      10,
+      8,
+      7
+    ]
+  },
+  {
+    "code": "BUD",
+    "name": "Budapest Airport",
+    "city": "Budapest",
+    "terminals": [
+      "2A",
+      "2B"
+    ],
+    "selectedTerminal": "2B",
+    "wait": [
+      16,
+      24
+    ],
+    "trend": "Rising",
+    "confidence": "Medium",
+    "reports": 15,
+    "updated": 5,
+    "status": "Busy",
+    "route": 38,
+    "checkin": 24,
+    "passport": 11,
+    "buffer": 22,
+    "trendData": [
+      10,
+      12,
+      13,
+      17,
+      19,
+      23,
+      29,
+      28,
+      23,
+      18,
+      16,
+      14
+    ]
+  },
+  {
+    "code": "BER",
+    "name": "Berlin Brandenburg",
+    "city": "Berlin",
+    "terminals": [
+      "T1",
+      "T2"
+    ],
+    "selectedTerminal": "T1",
+    "wait": [
+      35,
+      48
+    ],
+    "trend": "Rising",
+    "confidence": "High",
+    "reports": 42,
+    "updated": 3,
+    "status": "Severe",
+    "route": 45,
+    "checkin": 28,
+    "passport": 16,
+    "buffer": 25,
+    "trendData": [
+      18,
+      21,
+      24,
+      27,
+      32,
+      38,
+      44,
+      48,
+      42,
+      37,
+      33,
+      29
+    ]
+  },
+  {
+    "code": "MUC",
+    "name": "Munich Airport",
+    "city": "Munich",
+    "terminals": [
+      "T1",
+      "T2"
+    ],
+    "selectedTerminal": "T2",
+    "wait": [
+      12,
+      18
+    ],
+    "trend": "Stable",
+    "confidence": "High",
+    "reports": 27,
+    "updated": 3,
+    "status": "Normal",
+    "route": 34,
+    "checkin": 22,
+    "passport": 10,
+    "buffer": 20,
+    "trendData": [
+      11,
+      13,
+      15,
+      18,
+      17,
+      16,
+      14,
+      15,
+      18,
+      17,
+      15,
+      13
+    ]
+  },
+  {
+    "code": "WAW",
+    "name": "Warsaw Chopin",
+    "city": "Warsaw",
+    "terminals": [
+      "A",
+      "B"
+    ],
+    "selectedTerminal": "A",
+    "wait": [
+      14,
+      21
+    ],
+    "trend": "Stable",
+    "confidence": "Medium",
+    "reports": 18,
+    "updated": 6,
+    "status": "Normal",
+    "route": 31,
+    "checkin": 22,
+    "passport": 10,
+    "buffer": 20,
+    "trendData": [
+      9,
+      11,
+      14,
+      19,
+      21,
+      20,
+      17,
+      15,
+      16,
+      18,
+      15,
+      12
+    ]
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "name": "AirportReady Departure Planner",
+  "short_name": "AirportReady",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f9fd",
+  "theme_color": "#002045",
+  "description": "A mobile-first airport departure planner for live wait estimates, crowd reports, and leave-now alerts.",
+  "icons": []
+}
