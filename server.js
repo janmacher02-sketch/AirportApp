@@ -228,6 +228,47 @@ function withGoogleVerification(html) {
   return html.replaceAll("__GOOGLE_SITE_VERIFICATION_META__", googleVerificationMeta());
 }
 
+function acquisitionTrackingScript(page, airportCode = null) {
+  const pageValue = JSON.stringify(page);
+  const airportValue = airportCode ? JSON.stringify(airportCode) : "null";
+  return `<script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var explicitSource = params.get("src") || params.get("utm_source");
+        var referrer = document.referrer || "";
+        var referrerHost = "";
+        try {
+          referrerHost = referrer ? new URL(referrer).hostname.replace(/^www\\./, "") : "";
+        } catch (error) {
+          referrerHost = "";
+        }
+        var searchHosts = ["google.", "bing.", "duckduckgo.", "seznam.", "yahoo.", "ecosia.", "baidu.", "yandex."];
+        var acquisitionSource =
+          explicitSource ||
+          (searchHosts.some(function (host) { return referrerHost.indexOf(host) !== -1; })
+            ? "organic_search"
+            : referrerHost
+              ? "referral"
+              : "direct");
+        fetch("/api/events", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            eventType: "page_view",
+            airportCode: ${airportValue},
+            metadata: {
+              acquisitionSource: acquisitionSource,
+              referrerHost: referrerHost,
+              path: location.pathname,
+              query: location.search,
+              page: ${pageValue}
+            }
+          })
+        }).catch(function () {});
+      })();
+    </script>`;
+}
+
 async function renderAirportPage(request, response, code) {
   const airportCode = String(code || "").toUpperCase();
   const airports = await readJson(airportsPath, []);
@@ -361,11 +402,7 @@ async function renderHowEarlyPage(request, response, code) {
         )}" already have the problem. This page exists to capture that demand without founder posts or personal outreach.</p>
       </section>
     </main>
-    <script>
-      fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventType: "page_view", airportCode: "${escapeHtml(
-        airport.code
-      )}", metadata: { acquisitionSource: "direct", path: location.pathname, query: location.search, page: "how_early_page" } }) }).catch(() => {});
-    </script>
+    ${acquisitionTrackingScript("how_early_page", airport.code)}
   </body>
 </html>`;
 
@@ -448,9 +485,7 @@ async function renderArrivalCalculatorPage(request, response) {
         </article>
       </section>
     </main>
-    <script>
-      fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventType: "page_view", metadata: { acquisitionSource: document.referrer && !document.referrer.includes(location.host) ? "referral" : "direct", path: location.pathname, query: location.search, page: "arrival_calculator" } }) }).catch(() => {});
-    </script>
+    ${acquisitionTrackingScript("arrival_calculator")}
   </body>
 </html>`;
 
@@ -523,9 +558,7 @@ async function renderSecurityGuidePage(request, response) {
         </article>
       </section>
     </main>
-    <script>
-      fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventType: "page_view", metadata: { acquisitionSource: document.referrer && !document.referrer.includes(location.host) ? "referral" : "direct", path: location.pathname, query: location.search, page: "security_guide" } }) }).catch(() => {});
-    </script>
+    ${acquisitionTrackingScript("security_guide")}
   </body>
 </html>`;
 
@@ -638,6 +671,7 @@ async function handleApi(request, response, url) {
       eventsByType: byCount(events, (event) => event.eventType),
       eventsByAirport: byCount(events, (event) => event.airportCode),
       eventsBySource: byCount(events, (event) => event.metadata && event.metadata.acquisitionSource),
+      eventsByPage: byCount(events, (event) => event.metadata && event.metadata.page),
       reportsByAirport: byCount(reports, (report) => report.airportCode),
       waitlistByAirport: byCount(waitlist, (entry) => entry.airportCode),
       latestEvents: events.slice(0, 10),

@@ -2,6 +2,7 @@ const totalsEl = document.querySelector("#admin-totals");
 const eventsByTypeEl = document.querySelector("#events-by-type");
 const signalsByAirportEl = document.querySelector("#signals-by-airport");
 const eventsBySourceEl = document.querySelector("#events-by-source");
+const eventsByPageEl = document.querySelector("#events-by-page");
 const latestEventsEl = document.querySelector("#latest-events");
 const latestWaitlistEl = document.querySelector("#latest-waitlist");
 const refreshButton = document.querySelector("#refresh-admin");
@@ -70,13 +71,16 @@ async function loadAdmin() {
   renderKeyValues(eventsByTypeEl, data.eventsByType, "No tracked events yet.");
   renderKeyValues(signalsByAirportEl, data.eventsByAirport, "No airport events yet.");
   renderKeyValues(eventsBySourceEl, data.eventsBySource, "No source data yet.");
+  renderKeyValues(eventsByPageEl, data.eventsByPage, "No landing page data yet.");
 
   renderList(
     latestEventsEl,
     data.latestEvents,
     (event) => `
       <div class="admin-row">
-        <span>${event.eventType}<small>${event.airportCode || "unknown"} - ${relativeTime(event.createdAt)}</small></span>
+        <span>${event.eventType}<small>${event.metadata?.acquisitionSource || "unknown"} / ${
+      event.metadata?.page || event.metadata?.path || "unknown"
+    } - ${relativeTime(event.createdAt)}</small></span>
         <strong>${event.airportCode || "-"}</strong>
       </div>
     `,
