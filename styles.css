@@ -974,6 +974,51 @@ input[type="range"] {
   font-weight: 800;
 }
 
+.landing-cta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.55fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.landing-waitlist-form {
+  display: grid;
+  gap: 8px;
+}
+
+.landing-waitlist-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.landing-waitlist-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.landing-waitlist-row input {
+  min-height: 42px;
+}
+
+.landing-waitlist-row button {
+  min-height: 42px;
+  border: 1px solid var(--secondary);
+  border-radius: 6px;
+  background: var(--secondary);
+  color: #fff;
+  padding: 0 14px;
+  font-weight: 800;
+}
+
+.landing-form-message {
+  min-height: 20px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .plans article {
   display: grid;
   gap: 8px;
@@ -1300,7 +1345,9 @@ input[type="range"] {
   .offer-strip,
   .plans,
   .validation-stats,
-  .waitlist-row {
+  .waitlist-row,
+  .landing-cta,
+  .landing-waitlist-row {
     grid-template-columns: 1fr;
   }
 

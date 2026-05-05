@@ -269,6 +269,74 @@ function acquisitionTrackingScript(page, airportCode = null) {
     </script>`;
 }
 
+function landingWaitlistBlock({ airportCode = "", plan = "trip_pass", title = "Get airport timing alerts" } = {}) {
+  const airportValue = airportCode ? escapeHtml(airportCode) : "";
+  const helperText = airportCode
+    ? `Airport: ${escapeHtml(airportCode)} - Plan: ${escapeHtml(plan)}`
+    : `Plan: ${escapeHtml(plan)}`;
+  return `<section class="public-card landing-cta">
+        <div>
+          <p class="eyebrow">Trip alerts</p>
+          <h2>${escapeHtml(title)}</h2>
+          <p class="public-copy">Join the test list for leave-now alerts and airport timing updates when this pilot becomes available.</p>
+        </div>
+        <form class="landing-waitlist-form" data-airport-code="${airportValue}" data-plan="${escapeHtml(plan)}">
+          <label>
+            <span>Email</span>
+            <div class="landing-waitlist-row">
+              <input name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+              <button type="submit">Get alerts</button>
+            </div>
+          </label>
+          <p class="helper">${helperText}</p>
+          <p class="landing-form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>`;
+}
+
+function landingWaitlistScript(page) {
+  const pageValue = JSON.stringify(page);
+  return `<script>
+      document.querySelectorAll(".landing-waitlist-form").forEach(function (form) {
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          var emailInput = form.querySelector("input[name='email']");
+          var message = form.querySelector(".landing-form-message");
+          var airportCode = form.getAttribute("data-airport-code") || null;
+          var plan = form.getAttribute("data-plan") || "trip_pass";
+          if (message) message.textContent = "Saving...";
+          fetch("/api/waitlist", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email: emailInput.value.trim(), airportCode: airportCode, plan: plan })
+          })
+            .then(function (response) {
+              return response.json().then(function (payload) {
+                if (!response.ok) throw new Error(payload.error || "Waitlist signup failed.");
+                return payload;
+              });
+            })
+            .then(function (payload) {
+              emailInput.value = "";
+              if (message) message.textContent = payload.duplicate ? "You are already on the list." : "Saved. We will use this to prioritize alerts.";
+              return fetch("/api/events", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  eventType: "join_waitlist",
+                  airportCode: airportCode,
+                  metadata: { page: ${pageValue}, plan: plan, duplicate: Boolean(payload.duplicate), path: location.pathname }
+                })
+              });
+            })
+            .catch(function (error) {
+              if (message) message.textContent = error.message || "Could not save email.";
+            });
+        });
+      });
+    </script>`;
+}
+
 async function renderAirportPage(request, response, code) {
   const airportCode = String(code || "").toUpperCase();
   const airports = await readJson(airportsPath, []);
@@ -395,14 +463,20 @@ async function renderHowEarlyPage(request, response, code) {
         </article>
       </section>
       <section class="public-card">
-        <p class="eyebrow">Marketing note</p>
-        <h2>This page targets search intent, not social traffic</h2>
+        <p class="eyebrow">Why this matters</p>
+        <h2>Airport timing is easier when the wait is current</h2>
         <p class="public-copy">People searching "how early to arrive at ${escapeHtml(
           airport.name
-        )}" already have the problem. This page exists to capture that demand without founder posts or personal outreach.</p>
+        )}" usually need a decision soon. AirportReady turns wait estimates and trip buffers into a practical departure plan.</p>
       </section>
+      ${landingWaitlistBlock({
+        airportCode: airport.code,
+        plan: "arrival_alerts",
+        title: `Get ${airport.code} arrival alerts`,
+      })}
     </main>
     ${acquisitionTrackingScript("how_early_page", airport.code)}
+    ${landingWaitlistScript("how_early_page")}
   </body>
 </html>`;
 
@@ -484,8 +558,13 @@ async function renderArrivalCalculatorPage(request, response) {
           <div class="airport-page-links">${airportLinks}</div>
         </article>
       </section>
+      ${landingWaitlistBlock({
+        plan: "calculator_alerts",
+        title: "Get airport calculator alerts",
+      })}
     </main>
     ${acquisitionTrackingScript("arrival_calculator")}
+    ${landingWaitlistScript("arrival_calculator")}
   </body>
 </html>`;
 
@@ -557,8 +636,179 @@ async function renderSecurityGuidePage(request, response) {
           <p class="public-copy">For short-haul flights, two hours is a common baseline. For long-haul or non-Schengen flights, three hours is safer. AirportReady turns that broad advice into a more practical leave-time estimate.</p>
         </article>
       </section>
+      ${landingWaitlistBlock({
+        plan: "security_wait_alerts",
+        title: "Get security wait alerts",
+      })}
     </main>
     ${acquisitionTrackingScript("security_guide")}
+    ${landingWaitlistScript("security_guide")}
+  </body>
+</html>`;
+
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(html);
+}
+
+async function renderHowLongBeforeFlightGuidePage(request, response) {
+  const origin = originFromRequest(request);
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    ${googleVerificationMeta()}
+    <meta name="description" content="A practical answer to how long before a flight you should arrive at the airport, with buffers for domestic, short-haul, international, baggage, and airport security." />
+    <link rel="canonical" href="${escapeHtml(origin)}/guides/how-long-before-flight-should-i-arrive" />
+    <meta property="og:title" content="How long before a flight should I arrive? | AirportReady" />
+    <meta property="og:description" content="Use a practical arrival buffer based on security waits, baggage, passport control, and airport route time." />
+    <meta property="og:url" content="${escapeHtml(origin)}/guides/how-long-before-flight-should-i-arrive" />
+    <meta property="og:type" content="article" />
+    <title>How long before a flight should I arrive? | AirportReady</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/"><span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span><span>AirportReady</span></a>
+      <nav class="public-nav" aria-label="Public navigation"><a href="/">Planner</a><a href="/tools/airport-arrival-calculator">Calculator</a></nav>
+    </header>
+    <main class="public-page">
+      <section class="airport-hero">
+        <div>
+          <p class="eyebrow">Pre-flight timing</p>
+          <h1>How long before a flight should you arrive?</h1>
+          <p class="public-copy">Use two hours as a short-haul baseline and three hours for long-haul or passport-control trips, then adjust for live security pressure, checked baggage, airport layout, and route time.</p>
+          <div class="public-actions">
+            <a class="primary-link" href="/tools/airport-arrival-calculator">Calculate my arrival time</a>
+            <a class="secondary-link" href="/guides/airport-security-wait-times">Read security guide</a>
+          </div>
+        </div>
+        <aside class="public-status-card">
+          <p class="eyebrow">Baseline</p>
+          <strong>2-3h</strong>
+          <span>Then adjust</span>
+          <p>The right answer changes when the airport gets busy.</p>
+        </aside>
+      </section>
+      <section class="public-grid">
+        <article class="public-card">
+          <p class="eyebrow">Quick answer</p>
+          <h2>Recommended starting points</h2>
+          <div class="security-summary">
+            <div class="metric"><span>Domestic / Schengen</span><strong>2h</strong></div>
+            <div class="metric"><span>International</span><strong>3h</strong></div>
+            <div class="metric"><span>Checked baggage</span><strong>+30m</strong></div>
+            <div class="metric"><span>Busy security</span><strong>+20m</strong></div>
+          </div>
+        </article>
+        <article class="public-card">
+          <p class="eyebrow">Better method</p>
+          <h2>Calculate backwards from boarding</h2>
+          <p class="public-copy">Start with departure time, subtract boarding close, gate walking time, security, check-in, passport control, and the route to the airport. AirportReady packages that into one leave-time estimate.</p>
+          <div class="public-actions"><a class="primary-link" href="/#planner">Open planner</a></div>
+        </article>
+      </section>
+      ${landingWaitlistBlock({
+        plan: "flight_arrival_guide",
+        title: "Get better arrival-time guidance",
+      })}
+    </main>
+    ${acquisitionTrackingScript("how_long_before_flight_guide")}
+    ${landingWaitlistScript("how_long_before_flight_guide")}
+  </body>
+</html>`;
+
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(html);
+}
+
+async function renderAirportSecurityWaitPage(request, response, code) {
+  const airportCode = String(code || "").toUpperCase();
+  const airports = await readJson(airportsPath, []);
+  const airport = airports.find((item) => item.code === airportCode);
+
+  if (!airport) {
+    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    response.end("Airport not found");
+    return;
+  }
+
+  const origin = originFromRequest(request);
+  const waitTextValue = `${airport.wait[0]}-${airport.wait[1]} min`;
+  const canonicalUrl = `${origin}/airports/${airport.code.toLowerCase()}/security-wait-time`;
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    ${googleVerificationMeta()}
+    <meta name="description" content="${escapeHtml(airport.name)} security wait time today, crowd status, confidence, and practical arrival guidance for ${escapeHtml(airport.code)}." />
+    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:title" content="${escapeHtml(airport.name)} security wait time today | AirportReady" />
+    <meta property="og:description" content="Current ${escapeHtml(airport.code)} security wait estimate: ${escapeHtml(waitTextValue)}." />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:type" content="article" />
+    <title>${escapeHtml(airport.name)} security wait time today | AirportReady</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/"><span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span><span>AirportReady</span></a>
+      <nav class="public-nav" aria-label="Public navigation"><a href="/">Planner</a><a href="/airports/${escapeHtml(airport.code.toLowerCase())}/how-early-to-arrive">Arrival guide</a></nav>
+    </header>
+    <main class="public-page">
+      <section class="airport-hero">
+        <div>
+          <p class="eyebrow">Security wait time</p>
+          <h1>${escapeHtml(airport.name)} security wait time today</h1>
+          <p class="public-copy">Current ${escapeHtml(airport.code)} security estimate is <strong>${escapeHtml(waitTextValue)}</strong>. Airport status is <strong>${escapeHtml(airport.status)}</strong> with ${escapeHtml(airport.confidence.toLowerCase())} confidence from sample crowd signals.</p>
+          <div class="public-actions">
+            <a class="primary-link" href="/?airport=${escapeHtml(airport.code)}">Calculate when to leave</a>
+            <a class="secondary-link" href="/airports/${escapeHtml(airport.code.toLowerCase())}">Open airport dashboard</a>
+          </div>
+        </div>
+        <aside class="public-status-card">
+          <p class="eyebrow">Current estimate</p>
+          <strong>${escapeHtml(waitTextValue)}</strong>
+          <span>${escapeHtml(airport.status)}</span>
+          <p>Terminal: <b>${escapeHtml(airport.selectedTerminal)}</b></p>
+          <p>Reports: <b>${escapeHtml(airport.reports)}</b></p>
+        </aside>
+      </section>
+      <section class="public-grid">
+        <article class="public-card">
+          <p class="eyebrow">Timing impact</p>
+          <h2>What this means for arrival time</h2>
+          <p class="public-copy">If security is above 30 minutes, arrive earlier or reduce risk with cabin baggage, online check-in, and a larger walking buffer. The planner uses this wait estimate to calculate a practical leave time.</p>
+        </article>
+        <article class="public-card">
+          <p class="eyebrow">Next action</p>
+          <h2>Do not guess from averages</h2>
+          <p class="public-copy">Use the current airport status to plan your departure time, then add alerts if you want updates before this route becomes busy.</p>
+        </article>
+      </section>
+      ${landingWaitlistBlock({
+        airportCode: airport.code,
+        plan: "security_wait_alerts",
+        title: `Get ${airport.code} security wait alerts`,
+      })}
+    </main>
+    ${acquisitionTrackingScript("airport_security_wait_page", airport.code)}
+    ${landingWaitlistScript("airport_security_wait_page")}
   </body>
 </html>`;
 
@@ -585,9 +835,14 @@ async function renderSitemap(request, response) {
     { loc: origin, priority: "1.0" },
     { loc: `${origin}/tools/airport-arrival-calculator`, priority: "0.9" },
     { loc: `${origin}/guides/airport-security-wait-times`, priority: "0.8" },
+    { loc: `${origin}/guides/how-long-before-flight-should-i-arrive`, priority: "0.8" },
     ...airports.flatMap((airport) => [
       {
         loc: `${origin}/airports/${airport.code.toLowerCase()}`,
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+      },
+      {
+        loc: `${origin}/airports/${airport.code.toLowerCase()}/security-wait-time`,
         priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
       },
       {
@@ -776,6 +1031,11 @@ async function serveStatic(request, response, url) {
     return;
   }
 
+  if (url.pathname === "/guides/how-long-before-flight-should-i-arrive") {
+    await renderHowLongBeforeFlightGuidePage(request, response);
+    return;
+  }
+
   const airportMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})$/i);
   if (airportMatch) {
     await renderAirportPage(request, response, airportMatch[1]);
@@ -785,6 +1045,12 @@ async function serveStatic(request, response, url) {
   const howEarlyMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})\/how-early-to-arrive$/i);
   if (howEarlyMatch) {
     await renderHowEarlyPage(request, response, howEarlyMatch[1]);
+    return;
+  }
+
+  const securityWaitMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})\/security-wait-time$/i);
+  if (securityWaitMatch) {
+    await renderAirportSecurityWaitPage(request, response, securityWaitMatch[1]);
     return;
   }
 
