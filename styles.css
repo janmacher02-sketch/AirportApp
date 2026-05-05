@@ -871,6 +871,29 @@ input[type="range"] {
   font-size: 22px;
 }
 
+.airport-page-links {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.airport-page-links a {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcff;
+  color: var(--primary);
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.airport-page-links a:hover {
+  border-color: var(--secondary);
+}
+
 .bottom-nav {
   display: none;
 }

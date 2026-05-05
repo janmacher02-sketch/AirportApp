@@ -138,6 +138,7 @@ function normalizeEvent(input) {
   const eventType = String(input.eventType || "").trim();
   const airportCode = String(input.airportCode || "").toUpperCase();
   const allowedEvents = new Set([
+    "page_view",
     "calculate_trip",
     "submit_report",
     "open_trip_pass",
@@ -211,7 +212,13 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-async function renderAirportPage(response, code) {
+function originFromRequest(request) {
+  const proto = request.headers["x-forwarded-proto"] || "https";
+  const hostHeader = request.headers["x-forwarded-host"] || request.headers.host || "airportready.onrender.com";
+  return `${proto}://${hostHeader}`;
+}
+
+async function renderAirportPage(request, response, code) {
   const airportCode = String(code || "").toUpperCase();
   const airports = await readJson(airportsPath, []);
   const airport = airports.find((item) => item.code === airportCode);
@@ -231,6 +238,7 @@ async function renderAirportPage(response, code) {
     "__AIRPORT_STATUS__": airport.status,
     "__AIRPORT_CONFIDENCE__": airport.confidence,
     "__AIRPORT_UPDATED__": `${airport.updated}m ago`,
+    "__CANONICAL_URL__": `${originFromRequest(request)}/airports/${airport.code.toLowerCase()}`,
   };
 
   const html = Object.entries(replacements).reduce(
@@ -243,6 +251,39 @@ async function renderAirportPage(response, code) {
     "cache-control": "no-store",
   });
   response.end(html);
+}
+
+async function renderRobots(request, response) {
+  const origin = originFromRequest(request);
+  response.writeHead(200, {
+    "content-type": "text/plain; charset=utf-8",
+    "cache-control": "public, max-age=3600",
+  });
+  response.end(`User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
+}
+
+async function renderSitemap(request, response) {
+  const origin = originFromRequest(request);
+  const airports = await readJson(airportsPath, []);
+  const urls = [
+    { loc: origin, priority: "1.0" },
+    ...airports.map((airport) => ({
+      loc: `${origin}/airports/${airport.code.toLowerCase()}`,
+      priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+    })),
+  ];
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+    .map(
+      (url) =>
+        `  <url><loc>${escapeHtml(url.loc)}</loc><changefreq>hourly</changefreq><priority>${url.priority}</priority></url>`
+    )
+    .join("\n")}\n</urlset>\n`;
+
+  response.writeHead(200, {
+    "content-type": "application/xml; charset=utf-8",
+    "cache-control": "public, max-age=3600",
+  });
+  response.end(body);
 }
 
 async function handleApi(request, response, url) {
@@ -305,6 +346,7 @@ async function handleApi(request, response, url) {
       },
       eventsByType: byCount(events, (event) => event.eventType),
       eventsByAirport: byCount(events, (event) => event.airportCode),
+      eventsBySource: byCount(events, (event) => event.metadata && event.metadata.acquisitionSource),
       reportsByAirport: byCount(reports, (report) => report.airportCode),
       waitlistByAirport: byCount(waitlist, (entry) => entry.airportCode),
       latestEvents: events.slice(0, 10),
@@ -385,13 +427,23 @@ async function handleApi(request, response, url) {
 }
 
 async function serveStatic(request, response, url) {
+  if (url.pathname === "/robots.txt") {
+    await renderRobots(request, response);
+    return;
+  }
+
+  if (url.pathname === "/sitemap.xml") {
+    await renderSitemap(request, response);
+    return;
+  }
+
   if (url.pathname === "/admin") {
     url = new URL("/admin.html", `http://${request.headers.host || "127.0.0.1"}`);
   }
 
   const airportMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})$/i);
   if (airportMatch) {
-    await renderAirportPage(response, airportMatch[1]);
+    await renderAirportPage(request, response, airportMatch[1]);
     return;
   }
 

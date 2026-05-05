@@ -173,6 +173,25 @@ function cloneAirports(source) {
   return JSON.parse(JSON.stringify(source));
 }
 
+function acquisitionMetadata(extra = {}) {
+  const params = new URLSearchParams(window.location.search);
+  const explicitSource = params.get("src") || params.get("utm_source");
+  const referrer = document.referrer || "";
+  const referrerHost = referrer ? new URL(referrer).hostname.replace(/^www\./, "") : "";
+  const searchHosts = ["google.", "bing.", "duckduckgo.", "seznam.", "yahoo."];
+  const acquisitionSource =
+    explicitSource ||
+    (searchHosts.some((host) => referrerHost.includes(host)) ? "organic_search" : referrerHost ? "referral" : "direct");
+
+  return {
+    acquisitionSource,
+    referrerHost,
+    path: window.location.pathname,
+    query: window.location.search,
+    ...extra,
+  };
+}
+
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, {
     headers: {
@@ -217,7 +236,7 @@ async function trackEvent(eventType, metadata = {}) {
       body: JSON.stringify({
         eventType,
         airportCode: state.selectedCode,
-        metadata,
+        metadata: acquisitionMetadata(metadata),
       }),
     });
     state.apiEventCount = Number(payload.eventCount || state.apiEventCount + 1);
@@ -592,8 +611,14 @@ async function init() {
   defaultDeparture.setMinutes(Math.ceil(defaultDeparture.getMinutes() / 5) * 5, 0, 0);
   departureTime.value = formatLocalDateTime(defaultDeparture);
   await loadAirports();
+  const initialAirport = new URLSearchParams(window.location.search).get("airport");
+  if (initialAirport && airports.some((airport) => airport.code === initialAirport.toUpperCase())) {
+    state.selectedCode = initialAirport.toUpperCase();
+    routeTime.value = selectedAirport().route;
+  }
   renderAll();
   updateCrowdLabel();
+  trackEvent("page_view", { page: "planner" });
 
   document.addEventListener("click", (event) => {
     const selectButton = event.target.closest("[data-select-airport]");

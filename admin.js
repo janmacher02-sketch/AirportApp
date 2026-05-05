@@ -1,6 +1,7 @@
 const totalsEl = document.querySelector("#admin-totals");
 const eventsByTypeEl = document.querySelector("#events-by-type");
 const signalsByAirportEl = document.querySelector("#signals-by-airport");
+const eventsBySourceEl = document.querySelector("#events-by-source");
 const latestEventsEl = document.querySelector("#latest-events");
 const latestWaitlistEl = document.querySelector("#latest-waitlist");
 const refreshButton = document.querySelector("#refresh-admin");
@@ -68,6 +69,7 @@ async function loadAdmin() {
 
   renderKeyValues(eventsByTypeEl, data.eventsByType, "No tracked events yet.");
   renderKeyValues(signalsByAirportEl, data.eventsByAirport, "No airport events yet.");
+  renderKeyValues(eventsBySourceEl, data.eventsBySource, "No source data yet.");
 
   renderList(
     latestEventsEl,

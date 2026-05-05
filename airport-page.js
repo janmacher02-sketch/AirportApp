@@ -23,6 +23,36 @@ async function api(path, options = {}) {
   return payload;
 }
 
+function acquisitionMetadata(extra = {}) {
+  const params = new URLSearchParams(window.location.search);
+  const explicitSource = params.get("src") || params.get("utm_source");
+  const referrer = document.referrer || "";
+  const referrerHost = referrer ? new URL(referrer).hostname.replace(/^www\./, "") : "";
+  const searchHosts = ["google.", "bing.", "duckduckgo.", "seznam.", "yahoo."];
+  const acquisitionSource =
+    explicitSource ||
+    (searchHosts.some((host) => referrerHost.includes(host)) ? "organic_search" : referrerHost ? "referral" : "direct");
+
+  return {
+    acquisitionSource,
+    referrerHost,
+    path: window.location.pathname,
+    query: window.location.search,
+    ...extra,
+  };
+}
+
+async function trackEvent(eventType, metadata = {}) {
+  try {
+    await api("/api/events", {
+      method: "POST",
+      body: JSON.stringify({ eventType, airportCode, metadata: acquisitionMetadata(metadata) }),
+    });
+  } catch {
+    // Tracking must not block public airport pages.
+  }
+}
+
 function waitText(airport) {
   return `${airport.wait[0]}-${airport.wait[1]} min`;
 }
@@ -104,10 +134,7 @@ reportForm.addEventListener("submit", async (event) => {
         crowdLevel: observedWait >= 35 ? 5 : observedWait >= 20 ? 4 : 3,
       }),
     });
-    await api("/api/events", {
-      method: "POST",
-      body: JSON.stringify({ eventType: "submit_report", airportCode, metadata: { source: "airport_page" } }),
-    });
+    await trackEvent("submit_report", { source: "airport_page" });
 
     const email = waitlistEmail.value.trim();
     if (email) {
@@ -115,10 +142,7 @@ reportForm.addEventListener("submit", async (event) => {
         method: "POST",
         body: JSON.stringify({ email, airportCode, plan: "trip_pass" }),
       });
-      await api("/api/events", {
-        method: "POST",
-        body: JSON.stringify({ eventType: "join_waitlist", airportCode, metadata: { source: "airport_page" } }),
-      });
+      await trackEvent("join_waitlist", { source: "airport_page" });
       waitlistEmail.value = "";
     }
 
@@ -129,4 +153,6 @@ reportForm.addEventListener("submit", async (event) => {
   }
 });
 
-loadAirport().catch(() => showToast("Could not load airport data."));
+loadAirport()
+  .then(() => trackEvent("page_view", { page: "airport_page" }))
+  .catch(() => showToast("Could not load airport data."));
