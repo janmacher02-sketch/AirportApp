@@ -218,6 +218,16 @@ function originFromRequest(request) {
   return `${proto}://${hostHeader}`;
 }
 
+function googleVerificationMeta() {
+  const token = String(process.env.GOOGLE_SITE_VERIFICATION || "").trim();
+  if (!token) return "";
+  return `<meta name="google-site-verification" content="${escapeHtml(token)}" />`;
+}
+
+function withGoogleVerification(html) {
+  return html.replaceAll("__GOOGLE_SITE_VERIFICATION_META__", googleVerificationMeta());
+}
+
 async function renderAirportPage(request, response, code) {
   const airportCode = String(code || "").toUpperCase();
   const airports = await readJson(airportsPath, []);
@@ -241,10 +251,10 @@ async function renderAirportPage(request, response, code) {
     "__CANONICAL_URL__": `${originFromRequest(request)}/airports/${airport.code.toLowerCase()}`,
   };
 
-  const html = Object.entries(replacements).reduce(
+  const html = withGoogleVerification(Object.entries(replacements).reduce(
     (content, [key, value]) => content.replaceAll(key, escapeHtml(value)),
     template
-  );
+  ));
 
   response.writeHead(200, {
     "content-type": "text/html; charset=utf-8",
@@ -274,6 +284,7 @@ async function renderHowEarlyPage(request, response, code) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#002045" />
+    ${googleVerificationMeta()}
     <meta name="description" content="How early to arrive at ${escapeHtml(airport.name)} (${escapeHtml(
       airport.code
     )}) based on current security wait estimates, terminal buffer, and crowd confidence." />
@@ -345,15 +356,175 @@ async function renderHowEarlyPage(request, response, code) {
       <section class="public-card">
         <p class="eyebrow">Marketing note</p>
         <h2>This page targets search intent, not social traffic</h2>
-        <p class="public-copy">People searching “how early to arrive at ${escapeHtml(
+        <p class="public-copy">People searching "how early to arrive at ${escapeHtml(
           airport.name
-        )}” already have the problem. This page exists to capture that demand without founder posts or personal outreach.</p>
+        )}" already have the problem. This page exists to capture that demand without founder posts or personal outreach.</p>
       </section>
     </main>
     <script>
       fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventType: "page_view", airportCode: "${escapeHtml(
         airport.code
       )}", metadata: { acquisitionSource: "direct", path: location.pathname, query: location.search, page: "how_early_page" } }) }).catch(() => {});
+    </script>
+  </body>
+</html>`;
+
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(html);
+}
+
+async function renderArrivalCalculatorPage(request, response) {
+  const origin = originFromRequest(request);
+  const airports = await readJson(airportsPath, []);
+  const airportLinks = airports
+    .map(
+      (airport) =>
+        `<a href="/airports/${escapeHtml(airport.code.toLowerCase())}/how-early-to-arrive">${escapeHtml(
+          airport.name
+        )}</a>`
+    )
+    .join("");
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    ${googleVerificationMeta()}
+    <meta name="description" content="Free airport arrival calculator for deciding when to leave for the airport based on security wait time, travel time, and flight departure." />
+    <link rel="canonical" href="${escapeHtml(origin)}/tools/airport-arrival-calculator" />
+    <meta property="og:title" content="Airport arrival calculator | AirportReady" />
+    <meta property="og:description" content="Calculate when to leave for the airport using security wait estimates and practical departure buffers." />
+    <meta property="og:url" content="${escapeHtml(origin)}/tools/airport-arrival-calculator" />
+    <meta property="og:type" content="website" />
+    <title>Airport arrival calculator | AirportReady</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/"><span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span><span>AirportReady</span></a>
+      <nav class="public-nav" aria-label="Public navigation"><a href="/">Planner</a><a href="/guides/airport-security-wait-times">Security guide</a></nav>
+    </header>
+    <main class="public-page">
+      <section class="airport-hero">
+        <div>
+          <p class="eyebrow">Free airport tool</p>
+          <h1>Airport arrival calculator</h1>
+          <p class="public-copy">Use AirportReady to estimate when to leave for the airport. The planner combines flight departure time, travel time to the airport, current security waits, and a practical gate buffer.</p>
+          <div class="public-actions">
+            <a class="primary-link" href="/#planner">Open calculator</a>
+            <a class="secondary-link" href="/airports/prg/how-early-to-arrive">See PRG example</a>
+          </div>
+        </div>
+        <aside class="public-status-card">
+          <p class="eyebrow">Best first use</p>
+          <strong>2-3h</strong>
+          <span>Dynamic buffer</span>
+          <p>Built for real departure decisions, not generic travel inspiration.</p>
+        </aside>
+      </section>
+      <section class="public-grid">
+        <article class="public-card">
+          <p class="eyebrow">Inputs</p>
+          <h2>What the calculator uses</h2>
+          <div class="security-summary">
+            <div class="metric"><span>Flight departure</span><strong>Time</strong></div>
+            <div class="metric"><span>Route to airport</span><strong>Minutes</strong></div>
+            <div class="metric"><span>Security wait</span><strong>Live estimate</strong></div>
+            <div class="metric"><span>Gate buffer</span><strong>Risk margin</strong></div>
+          </div>
+        </article>
+        <article class="public-card">
+          <p class="eyebrow">Airport pages</p>
+          <h2>Arrival guides by airport</h2>
+          <p class="public-copy">These pages are built for people searching with immediate departure intent.</p>
+          <div class="airport-page-links">${airportLinks}</div>
+        </article>
+      </section>
+    </main>
+    <script>
+      fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventType: "page_view", metadata: { acquisitionSource: document.referrer && !document.referrer.includes(location.host) ? "referral" : "direct", path: location.pathname, query: location.search, page: "arrival_calculator" } }) }).catch(() => {});
+    </script>
+  </body>
+</html>`;
+
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(html);
+}
+
+async function renderSecurityGuidePage(request, response) {
+  const origin = originFromRequest(request);
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    ${googleVerificationMeta()}
+    <meta name="description" content="A practical guide to airport security wait times, why they change, and how to decide when to arrive at the airport." />
+    <link rel="canonical" href="${escapeHtml(origin)}/guides/airport-security-wait-times" />
+    <meta property="og:title" content="Airport security wait times guide | AirportReady" />
+    <meta property="og:description" content="Understand airport security waits and use them to plan when to leave for the airport." />
+    <meta property="og:url" content="${escapeHtml(origin)}/guides/airport-security-wait-times" />
+    <meta property="og:type" content="article" />
+    <title>Airport security wait times guide | AirportReady</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/"><span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span><span>AirportReady</span></a>
+      <nav class="public-nav" aria-label="Public navigation"><a href="/">Planner</a><a href="/tools/airport-arrival-calculator">Calculator</a></nav>
+    </header>
+    <main class="public-page">
+      <section class="airport-hero">
+        <div>
+          <p class="eyebrow">Airport timing guide</p>
+          <h1>Airport security wait times are the part you cannot guess</h1>
+          <p class="public-copy">Most departure advice says to arrive two or three hours early. That is useful, but incomplete. The real decision depends on live security pressure, airport layout, route time, baggage, and destination type.</p>
+          <div class="public-actions">
+            <a class="primary-link" href="/tools/airport-arrival-calculator">Use the calculator</a>
+            <a class="secondary-link" href="/airports/prg">View airport wait pages</a>
+          </div>
+        </div>
+        <aside class="public-status-card">
+          <p class="eyebrow">Search intent</p>
+          <strong>High</strong>
+          <span>Pre-flight problem</span>
+          <p>This guide is meant to capture users already worried about airport timing.</p>
+        </aside>
+      </section>
+      <section class="public-grid">
+        <article class="public-card">
+          <p class="eyebrow">Decision factors</p>
+          <h2>What changes your arrival time</h2>
+          <div class="security-summary">
+            <div class="metric"><span>Security line</span><strong>Variable</strong></div>
+            <div class="metric"><span>Checked baggage</span><strong>+30m</strong></div>
+            <div class="metric"><span>Passport control</span><strong>+20m</strong></div>
+            <div class="metric"><span>Airport route</span><strong>Live risk</strong></div>
+          </div>
+        </article>
+        <article class="public-card">
+          <p class="eyebrow">Rule of thumb</p>
+          <h2>Start with a baseline, then adjust</h2>
+          <p class="public-copy">For short-haul flights, two hours is a common baseline. For long-haul or non-Schengen flights, three hours is safer. AirportReady turns that broad advice into a more practical leave-time estimate.</p>
+        </article>
+      </section>
+    </main>
+    <script>
+      fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventType: "page_view", metadata: { acquisitionSource: document.referrer && !document.referrer.includes(location.host) ? "referral" : "direct", path: location.pathname, query: location.search, page: "security_guide" } }) }).catch(() => {});
     </script>
   </body>
 </html>`;
@@ -379,6 +550,8 @@ async function renderSitemap(request, response) {
   const airports = await readJson(airportsPath, []);
   const urls = [
     { loc: origin, priority: "1.0" },
+    { loc: `${origin}/tools/airport-arrival-calculator`, priority: "0.9" },
+    { loc: `${origin}/guides/airport-security-wait-times`, priority: "0.8" },
     ...airports.flatMap((airport) => [
       {
         loc: `${origin}/airports/${airport.code.toLowerCase()}`,
@@ -559,6 +732,16 @@ async function serveStatic(request, response, url) {
     url = new URL("/admin.html", `http://${request.headers.host || "127.0.0.1"}`);
   }
 
+  if (url.pathname === "/tools/airport-arrival-calculator") {
+    await renderArrivalCalculatorPage(request, response);
+    return;
+  }
+
+  if (url.pathname === "/guides/airport-security-wait-times") {
+    await renderSecurityGuidePage(request, response);
+    return;
+  }
+
   const airportMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})$/i);
   if (airportMatch) {
     await renderAirportPage(request, response, airportMatch[1]);
@@ -583,11 +766,13 @@ async function serveStatic(request, response, url) {
   try {
     const content = await fs.readFile(filePath);
     const extension = path.extname(filePath).toLowerCase();
+    const body =
+      extension === ".html" ? Buffer.from(withGoogleVerification(content.toString("utf8")), "utf8") : content;
     response.writeHead(200, {
       "content-type": contentTypes[extension] || "application/octet-stream",
       "cache-control": extension === ".html" ? "no-store" : "public, max-age=60",
     });
-    response.end(content);
+    response.end(body);
   } catch (error) {
     if (error.code === "ENOENT") {
       response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });

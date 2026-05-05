@@ -14,14 +14,20 @@ Domain properties are better long term, but they need DNS access. URL-prefix is 
 
 ## Verification
 
-Use the HTML tag verification method if possible.
+Use the HTML tag verification method if possible. The app supports this without code edits through an environment variable.
 
 1. In Google Search Console, choose URL-prefix property.
-2. Copy the `<meta name="google-site-verification" ...>` tag.
-3. Add it to the `<head>` of `index.html` and `airport-page.html`.
-4. Commit and push.
-5. Wait for Render deploy.
-6. Click Verify in Search Console.
+2. Copy only the value inside `content="..."` from the verification tag.
+3. In Render, open `airportready` -> Environment.
+4. Add:
+
+```text
+GOOGLE_SITE_VERIFICATION=the-token-from-google
+```
+
+5. Save and redeploy.
+6. Open the site source and confirm a `google-site-verification` meta tag is present.
+7. Click Verify in Search Console.
 
 ## Submit Sitemap
 
@@ -68,4 +74,4 @@ munich airport security wait time
 
 ## Rule
 
-Do not optimize for generic “travel app” traffic. Optimize for people with an immediate airport timing problem.
+Do not optimize for generic "travel app" traffic. Optimize for people with an immediate airport timing problem.
