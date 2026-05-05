@@ -253,6 +253,118 @@ async function renderAirportPage(request, response, code) {
   response.end(html);
 }
 
+async function renderHowEarlyPage(request, response, code) {
+  const airportCode = String(code || "").toUpperCase();
+  const airports = await readJson(airportsPath, []);
+  const airport = airports.find((item) => item.code === airportCode);
+
+  if (!airport) {
+    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    response.end("Airport not found");
+    return;
+  }
+
+  const recommendedArrival = airport.wait[1] >= 35 ? "2h 45m" : airport.wait[1] >= 22 ? "2h 25m" : "2h 10m";
+  const schengenArrival = airport.wait[1] >= 35 ? "2h 20m" : "2h 00m";
+  const fastTrackArrival = airport.wait[1] >= 35 ? "2h 15m" : "1h 50m";
+  const canonicalUrl = `${originFromRequest(request)}/airports/${airport.code.toLowerCase()}/how-early-to-arrive`;
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    <meta name="description" content="How early to arrive at ${escapeHtml(airport.name)} (${escapeHtml(
+      airport.code
+    )}) based on current security wait estimates, terminal buffer, and crowd confidence." />
+    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:title" content="How early to arrive at ${escapeHtml(airport.name)} (${escapeHtml(
+      airport.code
+    )})" />
+    <meta property="og:description" content="Current ${escapeHtml(
+      airport.code
+    )} arrival guidance using security wait estimates and crowd reports." />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:type" content="article" />
+    <title>How early to arrive at ${escapeHtml(airport.name)} (${escapeHtml(airport.code)}) | AirportReady</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/"><span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span><span>AirportReady</span></a>
+      <nav class="public-nav" aria-label="Public navigation"><a href="/">Planner</a><a href="/airports/${escapeHtml(
+        airport.code.toLowerCase()
+      )}">${escapeHtml(airport.code)} wait time</a></nav>
+    </header>
+    <main class="public-page">
+      <section class="airport-hero">
+        <div>
+          <p class="eyebrow">Airport arrival guide</p>
+          <h1>How early should you arrive at ${escapeHtml(airport.name)}?</h1>
+          <p class="public-copy">For ${escapeHtml(
+            airport.code
+          )}, AirportReady currently recommends arriving around <strong>${recommendedArrival}</strong> before departure for a standard international trip. The live security estimate is <strong>${escapeHtml(
+    `${airport.wait[0]}-${airport.wait[1]} min`
+  )}</strong> with ${escapeHtml(airport.confidence.toLowerCase())} confidence.</p>
+          <div class="public-actions">
+            <a class="primary-link" href="/?airport=${escapeHtml(airport.code)}">Calculate my departure time</a>
+            <a class="secondary-link" href="/airports/${escapeHtml(airport.code.toLowerCase())}">View live wait time</a>
+          </div>
+        </div>
+        <aside class="public-status-card">
+          <p class="eyebrow">Current guidance</p>
+          <strong>${recommendedArrival}</strong>
+          <span>${escapeHtml(airport.status)}</span>
+          <p>Security estimate: <b>${escapeHtml(`${airport.wait[0]}-${airport.wait[1]} min`)}</b></p>
+          <p>Updated: <b>${escapeHtml(`${airport.updated}m ago`)}</b></p>
+        </aside>
+      </section>
+      <section class="public-grid">
+        <article class="public-card">
+          <p class="eyebrow">Arrival windows</p>
+          <h2>${escapeHtml(airport.code)} arrival recommendations</h2>
+          <div class="security-summary">
+            <div class="metric"><span>Standard international</span><strong>${recommendedArrival}</strong></div>
+            <div class="metric"><span>Schengen / short-haul</span><strong>${schengenArrival}</strong></div>
+            <div class="metric"><span>Fast track / cabin bag</span><strong>${fastTrackArrival}</strong></div>
+            <div class="metric"><span>Current security</span><strong>${escapeHtml(`${airport.wait[0]}-${airport.wait[1]}`)}</strong></div>
+          </div>
+        </article>
+        <article class="public-card">
+          <p class="eyebrow">Why this changes</p>
+          <h2>Security wait time is the unstable part</h2>
+          <p class="public-copy">Airline check-in and boarding buffers are predictable. Security, passport control, and travel time to the airport are not. AirportReady combines those risks into a practical leave-now estimate.</p>
+          <div class="public-actions"><a class="primary-link" href="/airports/${escapeHtml(
+            airport.code.toLowerCase()
+          )}#report">Report ${escapeHtml(airport.code)} wait time</a></div>
+        </article>
+      </section>
+      <section class="public-card">
+        <p class="eyebrow">Marketing note</p>
+        <h2>This page targets search intent, not social traffic</h2>
+        <p class="public-copy">People searching “how early to arrive at ${escapeHtml(
+          airport.name
+        )}” already have the problem. This page exists to capture that demand without founder posts or personal outreach.</p>
+      </section>
+    </main>
+    <script>
+      fetch("/api/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventType: "page_view", airportCode: "${escapeHtml(
+        airport.code
+      )}", metadata: { acquisitionSource: "direct", path: location.pathname, query: location.search, page: "how_early_page" } }) }).catch(() => {});
+    </script>
+  </body>
+</html>`;
+
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(html);
+}
+
 async function renderRobots(request, response) {
   const origin = originFromRequest(request);
   response.writeHead(200, {
@@ -267,10 +379,16 @@ async function renderSitemap(request, response) {
   const airports = await readJson(airportsPath, []);
   const urls = [
     { loc: origin, priority: "1.0" },
-    ...airports.map((airport) => ({
-      loc: `${origin}/airports/${airport.code.toLowerCase()}`,
-      priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
-    })),
+    ...airports.flatMap((airport) => [
+      {
+        loc: `${origin}/airports/${airport.code.toLowerCase()}`,
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+      },
+      {
+        loc: `${origin}/airports/${airport.code.toLowerCase()}/how-early-to-arrive`,
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+      },
+    ]),
   ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map(
@@ -444,6 +562,12 @@ async function serveStatic(request, response, url) {
   const airportMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})$/i);
   if (airportMatch) {
     await renderAirportPage(request, response, airportMatch[1]);
+    return;
+  }
+
+  const howEarlyMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})\/how-early-to-arrive$/i);
+  if (howEarlyMatch) {
+    await renderHowEarlyPage(request, response, howEarlyMatch[1]);
     return;
   }
 

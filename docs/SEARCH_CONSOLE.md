@@ -1,0 +1,71 @@
+# Google Search Console Setup
+
+Goal: get AirportReady indexed without posting on social media or messaging people.
+
+## Property
+
+Use a URL-prefix property first:
+
+```text
+https://airportready.onrender.com/
+```
+
+Domain properties are better long term, but they need DNS access. URL-prefix is faster for this hosted test.
+
+## Verification
+
+Use the HTML tag verification method if possible.
+
+1. In Google Search Console, choose URL-prefix property.
+2. Copy the `<meta name="google-site-verification" ...>` tag.
+3. Add it to the `<head>` of `index.html` and `airport-page.html`.
+4. Commit and push.
+5. Wait for Render deploy.
+6. Click Verify in Search Console.
+
+## Submit Sitemap
+
+After verification, submit:
+
+```text
+https://airportready.onrender.com/sitemap.xml
+```
+
+Also test:
+
+```text
+https://airportready.onrender.com/robots.txt
+```
+
+## What To Watch
+
+Search Console:
+
+- Impressions for airport queries
+- Clicks
+- Average position
+- Queries containing `airport security wait time`
+- Queries containing `how early to arrive`
+
+AirportReady `/admin`:
+
+- `page_view`
+- `organic_search`
+- `calculate_trip`
+- `submit_report`
+- `join_waitlist`
+
+## First SEO Queries To Target
+
+```text
+prague airport security wait time
+how early to arrive at prague airport
+vienna airport security wait time
+how early to arrive at vienna airport
+berlin airport security wait time
+munich airport security wait time
+```
+
+## Rule
+
+Do not optimize for generic “travel app” traffic. Optimize for people with an immediate airport timing problem.
