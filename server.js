@@ -1056,6 +1056,9 @@ async function handleApi(request, response, url) {
       },
       setup: {
         googleVerificationConfigured: Boolean(String(process.env.GOOGLE_SITE_VERIFICATION || "").trim()),
+        googleVerificationEnvVar: "GOOGLE_SITE_VERIFICATION",
+        googleSearchConsoleUrl: "https://search.google.com/search-console/welcome",
+        renderDashboardUrl: "https://dashboard.render.com/",
         indexNowConfigured: Boolean(indexNowKey()),
         indexNowKeyLocation: indexNowKeyLocation(request),
         sitemapUrl: `${origin}/sitemap.xml`,

@@ -1,6 +1,7 @@
 const seoTotalsEl = document.querySelector("#seo-totals");
 const seoChecklistEl = document.querySelector("#seo-checklist");
 const seoLinksEl = document.querySelector("#seo-links");
+const googleSetupEl = document.querySelector("#google-setup");
 const seoPagesEl = document.querySelector("#seo-pages");
 const refreshSeoButton = document.querySelector("#refresh-seo");
 const submitIndexNowButton = document.querySelector("#submit-indexnow");
@@ -66,10 +67,6 @@ function renderChecklist(items) {
 
 function renderLinks(setup) {
   seoLinksEl.innerHTML = `
-    <a class="admin-row seo-link-row" href="${setup.searchConsoleProperty}" target="_blank" rel="noreferrer">
-      <span>Search Console property<small>${setup.searchConsoleProperty}</small></span>
-      <strong>URL</strong>
-    </a>
     <a class="admin-row seo-link-row" href="${setup.sitemapUrl}" target="_blank" rel="noreferrer">
       <span>Sitemap<small>${setup.sitemapUrl}</small></span>
       <strong>XML</strong>
@@ -90,6 +87,37 @@ function renderLinks(setup) {
     setup.indexNowConfigured ? "Active" : "Todo"
   }</strong>
     </a>
+  `;
+}
+
+function renderGoogleSetup(setup) {
+  googleSetupEl.innerHTML = `
+    <a class="admin-row seo-link-row" href="${setup.googleSearchConsoleUrl}" target="_blank" rel="noreferrer">
+      <span>Open Google Search Console<small>Create a URL-prefix property.</small></span>
+      <strong>Open</strong>
+    </a>
+    <div class="admin-row">
+      <span>Property URL<small>Paste this exact URL into Search Console.</small></span>
+      <strong>${setup.searchConsoleProperty}</strong>
+    </div>
+    <a class="admin-row seo-link-row" href="${setup.renderDashboardUrl}" target="_blank" rel="noreferrer">
+      <span>Open Render dashboard<small>Add Google token to the airportready service environment.</small></span>
+      <strong>Open</strong>
+    </a>
+    <div class="admin-row">
+      <span>Render env var<small>Paste only the token from content=&quot;...&quot;, not the whole meta tag.</small></span>
+      <strong>${setup.googleVerificationEnvVar}</strong>
+    </div>
+    <div class="admin-row">
+      <span>Verification status<small>Search Console can verify after Render redeploys.</small></span>
+      <strong class="status-pill ${setup.googleVerificationConfigured ? "status-done" : "status-todo"}">${
+    setup.googleVerificationConfigured ? "Done" : "Todo"
+  }</strong>
+    </div>
+    <div class="admin-row">
+      <span>Sitemap to submit<small>Submit after property verification.</small></span>
+      <strong>${setup.sitemapUrl}</strong>
+    </div>
   `;
 }
 
@@ -141,6 +169,7 @@ async function loadSeo() {
   renderStats(data);
   renderChecklist(data.checklist);
   renderLinks(data.setup);
+  renderGoogleSetup(data.setup);
   renderPages(data.landingPages);
   renderIndexNowStatus(`${data.landingPages.length} URLs ready for IndexNow`, null);
 }

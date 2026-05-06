@@ -16,6 +16,12 @@ Domain properties are better long term, but they need DNS access. URL-prefix is 
 
 Use the HTML tag verification method if possible. The app supports this without code edits through an environment variable.
 
+The operational checklist is available at:
+
+```text
+https://airportready.onrender.com/admin/seo
+```
+
 1. In Google Search Console, choose URL-prefix property.
 2. Copy only the value inside `content="..."` from the verification tag.
 3. In Render, open `airportready` -> Environment.
