@@ -110,8 +110,8 @@ function renderGoogleSetup(setup) {
     </div>
     <div class="admin-row">
       <span>Verification status<small>Search Console can verify after Render redeploys.</small></span>
-      <strong class="status-pill ${setup.googleVerificationConfigured ? "status-done" : "status-todo"}">${
-    setup.googleVerificationConfigured ? "Done" : "Todo"
+      <strong class="status-pill ${setup.googleVerificationPresent ? "status-done" : "status-todo"}">${
+    setup.googleVerificationPresent ? "Ready" : "Todo"
   }</strong>
     </div>
     <div class="admin-row">

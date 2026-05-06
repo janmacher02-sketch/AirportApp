@@ -13,6 +13,7 @@ const eventsPath = path.join(dataDir, "events.json");
 const waitlistPath = path.join(dataDir, "waitlist.json");
 const port = Number(process.env.PORT || 4181);
 const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+const defaultGoogleSiteVerification = "BzTbHKuBhMDYpjVa2WVY-c_g6B_gY-5hNP-IQLoUzBA";
 const defaultIndexNowKey = "a74f9bb9d6a84b2a92a3fd29b5479d1f8e6d8a35c24b4f188a9c5a6d0e2f531c";
 
 const contentTypes = {
@@ -220,7 +221,7 @@ function originFromRequest(request) {
 }
 
 function googleVerificationMeta() {
-  const token = String(process.env.GOOGLE_SITE_VERIFICATION || "").trim();
+  const token = String(process.env.GOOGLE_SITE_VERIFICATION || defaultGoogleSiteVerification).trim();
   if (!token) return "";
   return `<meta name="google-site-verification" content="${escapeHtml(token)}" />`;
 }
@@ -1056,6 +1057,7 @@ async function handleApi(request, response, url) {
       },
       setup: {
         googleVerificationConfigured: Boolean(String(process.env.GOOGLE_SITE_VERIFICATION || "").trim()),
+        googleVerificationPresent: Boolean(googleVerificationMeta()),
         googleVerificationEnvVar: "GOOGLE_SITE_VERIFICATION",
         googleSearchConsoleUrl: "https://search.google.com/search-console/welcome",
         renderDashboardUrl: "https://dashboard.render.com/",
