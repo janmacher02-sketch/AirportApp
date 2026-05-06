@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    __GOOGLE_SITE_VERIFICATION_META__
+    <title>AirportReady SEO Checklist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/">
+        <span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span>
+        <span>AirportReady</span>
+      </a>
+      <nav class="public-nav" aria-label="Admin navigation">
+        <a href="/admin">Signals</a>
+        <a href="/sitemap.xml">Sitemap</a>
+        <a href="/robots.txt">Robots</a>
+      </nav>
+    </header>
+
+    <main class="admin-page">
+      <section class="admin-hero">
+        <div>
+          <p class="eyebrow">Passive acquisition</p>
+          <h1>SEO checklist</h1>
+          <p class="public-copy">
+            Operational view for no-social distribution: landing pages, sitemap coverage, Search Console setup, and
+            conversion signals.
+          </p>
+        </div>
+        <button class="secondary-link button-reset" type="button" id="refresh-seo">Refresh</button>
+      </section>
+
+      <section class="admin-stats" id="seo-totals"></section>
+
+      <section class="public-grid">
+        <article class="public-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Setup</p>
+              <h2>Search Console checklist</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="seo-checklist"></div>
+        </article>
+
+        <article class="public-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Important URLs</p>
+              <h2>Submit and inspect</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="seo-links"></div>
+        </article>
+      </section>
+
+      <section class="public-card">
+        <div class="card-header">
+          <div>
+            <p class="eyebrow">Landing pages</p>
+            <h2>Organic entry points</h2>
+          </div>
+        </div>
+        <div class="seo-page-list" id="seo-pages"></div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/admin-seo.js" defer></script>
+  </body>
+</html>

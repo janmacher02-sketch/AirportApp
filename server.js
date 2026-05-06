@@ -337,6 +337,67 @@ function landingWaitlistScript(page) {
     </script>`;
 }
 
+function seoLandingPages(origin, airports) {
+  return [
+    {
+      path: "/tools/airport-arrival-calculator",
+      url: `${origin}/tools/airport-arrival-calculator`,
+      title: "Airport arrival calculator",
+      intent: "Tool search",
+      eventPage: "arrival_calculator",
+      cta: "calculator_alerts",
+      priority: "0.9",
+    },
+    {
+      path: "/guides/airport-security-wait-times",
+      url: `${origin}/guides/airport-security-wait-times`,
+      title: "Airport security wait times guide",
+      intent: "General guide",
+      eventPage: "security_guide",
+      cta: "security_wait_alerts",
+      priority: "0.8",
+    },
+    {
+      path: "/guides/how-long-before-flight-should-i-arrive",
+      url: `${origin}/guides/how-long-before-flight-should-i-arrive`,
+      title: "How long before a flight should I arrive?",
+      intent: "General guide",
+      eventPage: "how_long_before_flight_guide",
+      cta: "flight_arrival_guide",
+      priority: "0.8",
+    },
+    ...airports.flatMap((airport) => [
+      {
+        path: `/airports/${airport.code.toLowerCase()}`,
+        url: `${origin}/airports/${airport.code.toLowerCase()}`,
+        title: `${airport.name} security wait time`,
+        intent: "Airport status",
+        eventPage: "airport_page",
+        cta: "planner",
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+      },
+      {
+        path: `/airports/${airport.code.toLowerCase()}/security-wait-time`,
+        url: `${origin}/airports/${airport.code.toLowerCase()}/security-wait-time`,
+        title: `${airport.name} security wait time today`,
+        intent: "Airport search",
+        eventPage: "airport_security_wait_page",
+        cta: "security_wait_alerts",
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+      },
+      {
+        path: `/airports/${airport.code.toLowerCase()}/how-early-to-arrive`,
+        url: `${origin}/airports/${airport.code.toLowerCase()}/how-early-to-arrive`,
+        title: `How early to arrive at ${airport.name}`,
+        intent: "Airport search",
+        eventPage: "how_early_page",
+        cta: "arrival_alerts",
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+      },
+    ]),
+  ];
+}
+
 async function renderAirportPage(request, response, code) {
   const airportCode = String(code || "").toUpperCase();
   const airports = await readJson(airportsPath, []);
@@ -833,23 +894,7 @@ async function renderSitemap(request, response) {
   const airports = await readJson(airportsPath, []);
   const urls = [
     { loc: origin, priority: "1.0" },
-    { loc: `${origin}/tools/airport-arrival-calculator`, priority: "0.9" },
-    { loc: `${origin}/guides/airport-security-wait-times`, priority: "0.8" },
-    { loc: `${origin}/guides/how-long-before-flight-should-i-arrive`, priority: "0.8" },
-    ...airports.flatMap((airport) => [
-      {
-        loc: `${origin}/airports/${airport.code.toLowerCase()}`,
-        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
-      },
-      {
-        loc: `${origin}/airports/${airport.code.toLowerCase()}/security-wait-time`,
-        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
-      },
-      {
-        loc: `${origin}/airports/${airport.code.toLowerCase()}/how-early-to-arrive`,
-        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
-      },
-    ]),
+    ...seoLandingPages(origin, airports).map((page) => ({ loc: page.url, priority: page.priority })),
   ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map(
@@ -940,6 +985,73 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/admin/seo") {
+    const [airports, events, waitlist] = await Promise.all([
+      readJson(airportsPath, []),
+      readJson(eventsPath, []),
+      readJson(waitlistPath, []),
+    ]);
+    const origin = originFromRequest(request);
+    const landingPages = seoLandingPages(origin, airports);
+    const eventsByPage = byCount(events, (event) => event.metadata && event.metadata.page);
+    const waitlistByPlan = byCount(waitlist, (entry) => entry.plan);
+    const waitlistByAirport = byCount(waitlist, (entry) => entry.airportCode);
+
+    sendJson(response, 200, {
+      totals: {
+        landingPages: landingPages.length,
+        airports: airports.length,
+        indexedInSitemap: landingPages.length,
+        organicEvents: events.filter((event) => event.metadata && event.metadata.acquisitionSource === "organic_search")
+          .length,
+        waitlist: waitlist.length,
+      },
+      setup: {
+        googleVerificationConfigured: Boolean(String(process.env.GOOGLE_SITE_VERIFICATION || "").trim()),
+        sitemapUrl: `${origin}/sitemap.xml`,
+        robotsUrl: `${origin}/robots.txt`,
+        searchConsoleProperty: `${origin}/`,
+      },
+      checklist: [
+        {
+          id: "search_console_property",
+          label: "Create URL-prefix property in Google Search Console",
+          status: "manual",
+          detail: `${origin}/`,
+        },
+        {
+          id: "google_verification",
+          label: "Add GOOGLE_SITE_VERIFICATION in Render",
+          status: process.env.GOOGLE_SITE_VERIFICATION ? "done" : "todo",
+          detail: "Render -> airportready -> Environment",
+        },
+        {
+          id: "submit_sitemap",
+          label: "Submit sitemap in Search Console",
+          status: "manual",
+          detail: `${origin}/sitemap.xml`,
+        },
+        {
+          id: "watch_queries",
+          label: "Watch queries and landing pages weekly",
+          status: events.length ? "active" : "waiting",
+          detail: "Use Search Console plus this dashboard.",
+        },
+      ],
+      landingPages: landingPages.map((page) => ({
+        ...page,
+        inSitemap: true,
+        events: eventsByPage[page.eventPage] || 0,
+        waitlist: waitlist.filter((entry) => entry.plan === page.cta).length,
+      })),
+      eventsByPage,
+      waitlistByPlan,
+      waitlistByAirport,
+      generatedAt: new Date().toISOString(),
+    });
+    return true;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/reports") {
     const limit = Math.min(25, Math.max(1, Number(url.searchParams.get("limit") || 5)));
     const reports = await readJson(reportsPath, []);
@@ -1019,6 +1131,10 @@ async function serveStatic(request, response, url) {
 
   if (url.pathname === "/admin") {
     url = new URL("/admin.html", `http://${request.headers.host || "127.0.0.1"}`);
+  }
+
+  if (url.pathname === "/admin/seo") {
+    url = new URL("/admin-seo.html", `http://${request.headers.host || "127.0.0.1"}`);
   }
 
   if (url.pathname === "/tools/airport-arrival-calculator") {

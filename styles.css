@@ -1265,6 +1265,80 @@ input[type="range"] {
   font-family: "Geist Mono", monospace;
 }
 
+.seo-link-row {
+  color: inherit;
+}
+
+.status-pill {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  padding: 5px 9px;
+  font-family: "Geist", sans-serif !important;
+  font-size: 12px;
+}
+
+.status-done,
+.status-active {
+  background: #e8fbef;
+  color: #11763f !important;
+}
+
+.status-todo {
+  background: #fff0ed;
+  color: #b42318 !important;
+}
+
+.status-manual,
+.status-waiting {
+  background: #fff7df;
+  color: #8a5a00 !important;
+}
+
+.seo-page-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.seo-page-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcff;
+  padding: 10px;
+}
+
+.seo-page-row a {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.seo-page-row small {
+  display: block;
+  margin-top: 3px;
+  color: var(--quiet);
+}
+
+.seo-page-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.seo-page-metrics span {
+  border-radius: 999px;
+  background: var(--surface-low);
+  color: var(--muted);
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 @media (max-width: 1100px) {
   .workspace {
     grid-template-columns: 1fr;
@@ -1422,5 +1496,13 @@ input[type="range"] {
 
   .admin-stats {
     grid-template-columns: 1fr;
+  }
+
+  .seo-page-row {
+    grid-template-columns: 1fr;
+  }
+
+  .seo-page-metrics {
+    justify-content: flex-start;
   }
 }
