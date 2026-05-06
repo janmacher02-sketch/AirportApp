@@ -13,6 +13,7 @@ const eventsPath = path.join(dataDir, "events.json");
 const waitlistPath = path.join(dataDir, "waitlist.json");
 const port = Number(process.env.PORT || 4181);
 const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+const defaultIndexNowKey = "a74f9bb9d6a84b2a92a3fd29b5479d1f8e6d8a35c24b4f188a9c5a6d0e2f531c";
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -226,6 +227,14 @@ function googleVerificationMeta() {
 
 function withGoogleVerification(html) {
   return html.replaceAll("__GOOGLE_SITE_VERIFICATION_META__", googleVerificationMeta());
+}
+
+function indexNowKey() {
+  return String(process.env.INDEXNOW_KEY || defaultIndexNowKey).trim();
+}
+
+function indexNowKeyLocation(request) {
+  return `${originFromRequest(request)}/indexnow-key.txt`;
 }
 
 function acquisitionTrackingScript(page, airportCode = null) {
@@ -889,6 +898,14 @@ async function renderRobots(request, response) {
   response.end(`User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
 }
 
+async function renderIndexNowKey(request, response) {
+  response.writeHead(200, {
+    "content-type": "text/plain; charset=utf-8",
+    "cache-control": "public, max-age=3600",
+  });
+  response.end(`${indexNowKey()}\n`);
+}
+
 async function renderSitemap(request, response) {
   const origin = originFromRequest(request);
   const airports = await readJson(airportsPath, []);
@@ -908,6 +925,37 @@ async function renderSitemap(request, response) {
     "cache-control": "public, max-age=3600",
   });
   response.end(body);
+}
+
+async function submitIndexNow(request, pages) {
+  const origin = originFromRequest(request);
+  const hostName = new URL(origin).hostname;
+  const body = {
+    host: hostName,
+    key: indexNowKey(),
+    keyLocation: indexNowKeyLocation(request),
+    urlList: pages.map((page) => page.url),
+  };
+
+  const startedAt = Date.now();
+  const indexNowResponse = await fetch("https://api.indexnow.org/indexnow", {
+    method: "POST",
+    headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify(body),
+  });
+  const responseText = await indexNowResponse.text();
+
+  return {
+    ok: indexNowResponse.ok,
+    status: indexNowResponse.status,
+    statusText: indexNowResponse.statusText,
+    submitted: body.urlList.length,
+    keyLocation: body.keyLocation,
+    host: body.host,
+    durationMs: Date.now() - startedAt,
+    response: responseText.slice(0, 500),
+    submittedAt: new Date().toISOString(),
+  };
 }
 
 async function handleApi(request, response, url) {
@@ -1008,6 +1056,8 @@ async function handleApi(request, response, url) {
       },
       setup: {
         googleVerificationConfigured: Boolean(String(process.env.GOOGLE_SITE_VERIFICATION || "").trim()),
+        indexNowConfigured: Boolean(indexNowKey()),
+        indexNowKeyLocation: indexNowKeyLocation(request),
         sitemapUrl: `${origin}/sitemap.xml`,
         robotsUrl: `${origin}/robots.txt`,
         searchConsoleProperty: `${origin}/`,
@@ -1032,6 +1082,12 @@ async function handleApi(request, response, url) {
           detail: `${origin}/sitemap.xml`,
         },
         {
+          id: "indexnow_submit",
+          label: "Submit landing pages to Bing via IndexNow",
+          status: indexNowKey() ? "active" : "todo",
+          detail: indexNowKeyLocation(request),
+        },
+        {
           id: "watch_queries",
           label: "Watch queries and landing pages weekly",
           status: events.length ? "active" : "waiting",
@@ -1049,6 +1105,15 @@ async function handleApi(request, response, url) {
       waitlistByAirport,
       generatedAt: new Date().toISOString(),
     });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/indexnow") {
+    const airports = await readJson(airportsPath, []);
+    const origin = originFromRequest(request);
+    const landingPages = seoLandingPages(origin, airports);
+    const result = await submitIndexNow(request, landingPages);
+    sendJson(response, result.ok ? 200 : 502, result);
     return true;
   }
 
@@ -1121,6 +1186,11 @@ async function handleApi(request, response, url) {
 async function serveStatic(request, response, url) {
   if (url.pathname === "/robots.txt") {
     await renderRobots(request, response);
+    return;
+  }
+
+  if (url.pathname === "/indexnow-key.txt") {
+    await renderIndexNowKey(request, response);
     return;
   }
 

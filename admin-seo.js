@@ -3,6 +3,8 @@ const seoChecklistEl = document.querySelector("#seo-checklist");
 const seoLinksEl = document.querySelector("#seo-links");
 const seoPagesEl = document.querySelector("#seo-pages");
 const refreshSeoButton = document.querySelector("#refresh-seo");
+const submitIndexNowButton = document.querySelector("#submit-indexnow");
+const indexNowStatusEl = document.querySelector("#indexnow-status");
 const toastEl = document.querySelector("#toast");
 
 let toastTimer;
@@ -11,6 +13,13 @@ async function api(path) {
   const response = await fetch(path);
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || `Request failed with ${response.status}`);
+  return payload;
+}
+
+async function postApi(path) {
+  const response = await fetch(path, { method: "POST" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.response || payload.error || `Request failed with ${response.status}`);
   return payload;
 }
 
@@ -75,6 +84,35 @@ function renderLinks(setup) {
     setup.googleVerificationConfigured ? "Done" : "Todo"
   }</strong>
     </div>
+    <a class="admin-row seo-link-row" href="${setup.indexNowKeyLocation}" target="_blank" rel="noreferrer">
+      <span>IndexNow key file<small>${setup.indexNowKeyLocation}</small></span>
+      <strong class="status-pill ${setup.indexNowConfigured ? "status-active" : "status-todo"}">${
+    setup.indexNowConfigured ? "Active" : "Todo"
+  }</strong>
+    </a>
+  `;
+}
+
+function renderIndexNowStatus(message, result) {
+  if (!result) {
+    indexNowStatusEl.innerHTML = `
+      <div class="admin-row">
+        <span>${message}<small>Ready to submit current landing pages.</small></span>
+        <strong class="status-pill status-waiting">Waiting</strong>
+      </div>
+    `;
+    return;
+  }
+
+  indexNowStatusEl.innerHTML = `
+    <div class="admin-row">
+      <span>${message}<small>${result.host} / ${result.keyLocation}</small></span>
+      <strong class="status-pill ${result.ok ? "status-done" : "status-todo"}">${result.status}</strong>
+    </div>
+    <div class="admin-row">
+      <span>Submitted URLs<small>${result.submittedAt || "just now"} / ${result.durationMs}ms</small></span>
+      <strong>${result.submitted}</strong>
+    </div>
   `;
 }
 
@@ -104,12 +142,38 @@ async function loadSeo() {
   renderChecklist(data.checklist);
   renderLinks(data.setup);
   renderPages(data.landingPages);
+  renderIndexNowStatus(`${data.landingPages.length} URLs ready for IndexNow`, null);
 }
 
 refreshSeoButton.addEventListener("click", () => {
   loadSeo()
     .then(() => showToast("SEO checklist refreshed."))
     .catch((error) => showToast(error.message || "SEO refresh failed."));
+});
+
+submitIndexNowButton.addEventListener("click", () => {
+  submitIndexNowButton.disabled = true;
+  renderIndexNowStatus("Submitting URLs to IndexNow...", null);
+  postApi("/api/admin/indexnow")
+    .then((result) => {
+      renderIndexNowStatus("IndexNow submission completed.", result);
+      showToast(`Submitted ${result.submitted} URLs to IndexNow.`);
+    })
+    .catch((error) => {
+      renderIndexNowStatus(error.message || "IndexNow submission failed.", {
+        ok: false,
+        status: "Error",
+        submitted: 0,
+        submittedAt: new Date().toISOString(),
+        durationMs: 0,
+        host: "-",
+        keyLocation: "-",
+      });
+      showToast(error.message || "IndexNow submission failed.");
+    })
+    .finally(() => {
+      submitIndexNowButton.disabled = false;
+    });
 });
 
 loadSeo().catch((error) => showToast(error.message || "Could not load SEO checklist."));
