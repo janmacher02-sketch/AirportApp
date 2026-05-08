@@ -6,6 +6,8 @@ const seoPagesEl = document.querySelector("#seo-pages");
 const refreshSeoButton = document.querySelector("#refresh-seo");
 const submitIndexNowButton = document.querySelector("#submit-indexnow");
 const indexNowStatusEl = document.querySelector("#indexnow-status");
+const testStorageButton = document.querySelector("#test-storage");
+const storageTestStatusEl = document.querySelector("#storage-test-status");
 const toastEl = document.querySelector("#toast");
 
 let toastTimer;
@@ -150,6 +152,35 @@ function renderIndexNowStatus(message, result) {
   `;
 }
 
+function renderStorageTestStatus(message, result) {
+  if (!result) {
+    storageTestStatusEl.innerHTML = `
+      <div class="admin-row">
+        <span>${message}<small>Waiting for a storage test.</small></span>
+        <strong class="status-pill status-waiting">Waiting</strong>
+      </div>
+    `;
+    return;
+  }
+
+  storageTestStatusEl.innerHTML = `
+    <div class="admin-row">
+      <span>${result.message}<small>Current storage: ${result.storage}</small></span>
+      <strong class="status-pill ${result.ok ? "status-done" : "status-todo"}">${result.ok ? "Ready" : "Check"}</strong>
+    </div>
+    ${(result.checks || [])
+      .map(
+        (check) => `
+          <div class="admin-row">
+            <span>${check.name}<small>${check.error || "OK"}</small></span>
+            <strong class="status-pill ${check.ok ? "status-done" : "status-todo"}">${check.ok ? "OK" : "Fail"}</strong>
+          </div>
+        `
+      )
+      .join("")}
+  `;
+}
+
 function renderPages(pages) {
   seoPagesEl.innerHTML = pages
     .map(
@@ -178,6 +209,10 @@ async function loadSeo() {
   renderGoogleSetup(data.setup);
   renderPages(data.landingPages);
   renderIndexNowStatus(`${data.landingPages.length} URLs ready for IndexNow`, null);
+  renderStorageTestStatus(
+    data.setup.supabaseConfigured ? "Supabase credentials detected." : "Supabase credentials are not configured.",
+    null
+  );
 }
 
 refreshSeoButton.addEventListener("click", () => {
@@ -208,6 +243,28 @@ submitIndexNowButton.addEventListener("click", () => {
     })
     .finally(() => {
       submitIndexNowButton.disabled = false;
+    });
+});
+
+testStorageButton.addEventListener("click", () => {
+  testStorageButton.disabled = true;
+  renderStorageTestStatus("Testing storage...", null);
+  postApi("/api/admin/storage-test")
+    .then((result) => {
+      renderStorageTestStatus("Storage test completed.", result);
+      showToast(result.message || "Storage test completed.");
+    })
+    .catch((error) => {
+      renderStorageTestStatus("Storage test failed.", {
+        ok: false,
+        storage: "unknown",
+        message: error.message || "Storage test failed.",
+        checks: [],
+      });
+      showToast(error.message || "Storage test failed.");
+    })
+    .finally(() => {
+      testStorageButton.disabled = false;
     });
 });
 

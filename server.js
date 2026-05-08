@@ -180,6 +180,68 @@ async function createWaitlistEntry(entry) {
   return { entry, waitlistCount: waitlist.length };
 }
 
+async function testSupabaseStorage() {
+  if (!supabaseConfigured()) {
+    return {
+      configured: false,
+      ok: false,
+      storage: "json",
+      checks: [
+        { name: "SUPABASE_URL", ok: Boolean(supabaseUrl) },
+        { name: "SUPABASE_SERVICE_ROLE_KEY", ok: Boolean(supabaseServiceRoleKey) },
+      ],
+      message: "Supabase environment variables are not configured.",
+    };
+  }
+
+  const checks = [];
+
+  try {
+    await supabaseRequest("airport_events?select=id&limit=1");
+    checks.push({ name: "airport_events table", ok: true });
+  } catch (error) {
+    checks.push({ name: "airport_events table", ok: false, error: error.message });
+  }
+
+  try {
+    await supabaseRequest("waitlist_signups?select=id&limit=1");
+    checks.push({ name: "waitlist_signups table", ok: true });
+  } catch (error) {
+    checks.push({ name: "waitlist_signups table", ok: false, error: error.message });
+  }
+
+  const canWriteEvent = checks.find((check) => check.name === "airport_events table" && check.ok);
+  if (canWriteEvent) {
+    try {
+      const testEvent = {
+        id: randomUUID(),
+        eventType: "page_view",
+        airportCode: null,
+        metadata: { page: "supabase_storage_test", source: "admin_storage_test" },
+        createdAt: new Date().toISOString(),
+      };
+      await supabaseRequest("airport_events", {
+        method: "POST",
+        body: toEventRow(testEvent),
+        prefer: "return=minimal",
+      });
+      checks.push({ name: "event write test", ok: true });
+    } catch (error) {
+      checks.push({ name: "event write test", ok: false, error: error.message });
+    }
+  }
+
+  return {
+    configured: true,
+    ok: checks.every((check) => check.ok),
+    storage: "supabase",
+    checks,
+    message: checks.every((check) => check.ok)
+      ? "Supabase storage is ready."
+      : "Supabase is configured, but at least one check failed.",
+  };
+}
+
 async function copySeedDataIfMissing(targetPath, seedFileName, fallback) {
   try {
     await fs.access(targetPath);
@@ -1271,6 +1333,12 @@ async function handleApi(request, response, url) {
     const landingPages = seoLandingPages(origin, airports);
     const result = await submitIndexNow(request, landingPages);
     sendJson(response, result.ok ? 200 : 502, result);
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/storage-test") {
+    const result = await testSupabaseStorage();
+    sendJson(response, result.ok ? 200 : 503, result);
     return true;
   }
 

@@ -71,3 +71,16 @@ Supabase
 ```
 
 Then submit a test email from any landing page and confirm it appears in the `waitlist_signups` table.
+
+You can also run the built-in storage test from the SEO dashboard:
+
+```text
+https://airportready.onrender.com/admin/seo
+```
+
+Click `Test storage`. The test checks:
+
+- Supabase env vars
+- `airport_events` table access
+- `waitlist_signups` table access
+- a server-side write into `airport_events`
