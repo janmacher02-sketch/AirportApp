@@ -87,6 +87,12 @@ function renderLinks(setup) {
     setup.indexNowConfigured ? "Active" : "Todo"
   }</strong>
     </a>
+    <div class="admin-row">
+      <span>Persistent storage<small>Events: ${setup.eventStore} / Waitlist: ${setup.waitlistStore}</small></span>
+      <strong class="status-pill ${setup.supabaseConfigured ? "status-done" : "status-todo"}">${
+    setup.supabaseConfigured ? "Supabase" : "JSON"
+  }</strong>
+    </div>
   `;
 }
 

@@ -15,6 +15,8 @@ const port = Number(process.env.PORT || 4181);
 const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const defaultGoogleSiteVerification = "BzTbHKuBhMDYpjVa2WVY-c_g6B_gY-5hNP-IQLoUzBA";
 const defaultIndexNowKey = "a74f9bb9d6a84b2a92a3fd29b5479d1f8e6d8a35c24b4f188a9c5a6d0e2f531c";
+const supabaseUrl = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -44,6 +46,138 @@ async function readJson(filePath, fallback) {
 async function writeJson(filePath, value) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function supabaseConfigured() {
+  return Boolean(supabaseUrl && supabaseServiceRoleKey);
+}
+
+async function supabaseRequest(pathname, { method = "GET", body, prefer } = {}) {
+  if (!supabaseConfigured()) {
+    throw Object.assign(new Error("Supabase is not configured"), { status: 503 });
+  }
+
+  const headers = {
+    apikey: supabaseServiceRoleKey,
+    authorization: `Bearer ${supabaseServiceRoleKey}`,
+    "content-type": "application/json",
+  };
+  if (prefer) headers.prefer = prefer;
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${pathname}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    const message = payload && (payload.message || payload.details || payload.hint);
+    throw Object.assign(new Error(message || `Supabase request failed with ${response.status}`), {
+      status: 502,
+    });
+  }
+
+  return payload;
+}
+
+function toEventRow(event) {
+  return {
+    id: event.id,
+    event_type: event.eventType,
+    airport_code: event.airportCode,
+    metadata: event.metadata || {},
+    created_at: event.createdAt,
+  };
+}
+
+function fromEventRow(row) {
+  return {
+    id: row.id,
+    eventType: row.event_type,
+    airportCode: row.airport_code,
+    metadata: row.metadata || {},
+    createdAt: row.created_at,
+  };
+}
+
+function toWaitlistRow(entry) {
+  return {
+    id: entry.id,
+    email: entry.email,
+    airport_code: entry.airportCode,
+    plan: entry.plan,
+    created_at: entry.createdAt,
+  };
+}
+
+function fromWaitlistRow(row) {
+  return {
+    id: row.id,
+    email: row.email,
+    airportCode: row.airport_code,
+    plan: row.plan,
+    createdAt: row.created_at,
+  };
+}
+
+async function readEvents() {
+  if (!supabaseConfigured()) return readJson(eventsPath, []);
+  const rows = await supabaseRequest("airport_events?select=*&order=created_at.desc&limit=5000");
+  return rows.map(fromEventRow);
+}
+
+async function createEvent(event) {
+  if (!supabaseConfigured()) {
+    const events = await readJson(eventsPath, []);
+    events.unshift(event);
+    await writeJson(eventsPath, events);
+    return { event, eventCount: events.length };
+  }
+
+  await supabaseRequest("airport_events", {
+    method: "POST",
+    body: toEventRow(event),
+    prefer: "return=minimal",
+  });
+  const events = await readEvents();
+  return { event, eventCount: events.length };
+}
+
+async function readWaitlist() {
+  if (!supabaseConfigured()) return readJson(waitlistPath, []);
+  const rows = await supabaseRequest("waitlist_signups?select=*&order=created_at.desc&limit=5000");
+  return rows.map(fromWaitlistRow);
+}
+
+async function findWaitlistEntry(email, plan) {
+  if (!supabaseConfigured()) {
+    const waitlist = await readJson(waitlistPath, []);
+    return waitlist.find((item) => item.email === email && item.plan === plan) || null;
+  }
+
+  const rows = await supabaseRequest(
+    `waitlist_signups?select=*&email=eq.${encodeURIComponent(email)}&plan=eq.${encodeURIComponent(plan)}&limit=1`
+  );
+  return rows.length ? fromWaitlistRow(rows[0]) : null;
+}
+
+async function createWaitlistEntry(entry) {
+  if (!supabaseConfigured()) {
+    const waitlist = await readJson(waitlistPath, []);
+    waitlist.unshift(entry);
+    await writeJson(waitlistPath, waitlist);
+    return { entry, waitlistCount: waitlist.length };
+  }
+
+  await supabaseRequest("waitlist_signups", {
+    method: "POST",
+    body: toWaitlistRow(entry),
+    prefer: "return=minimal",
+  });
+  const waitlist = await readWaitlist();
+  return { entry, waitlistCount: waitlist.length };
 }
 
 async function copySeedDataIfMissing(targetPath, seedFileName, fallback) {
@@ -961,7 +1095,11 @@ async function submitIndexNow(request, pages) {
 
 async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/health") {
-    sendJson(response, 200, { ok: true, service: "airportready-api" });
+    sendJson(response, 200, {
+      ok: true,
+      service: "airportready-api",
+      storage: supabaseConfigured() ? "supabase" : "json",
+    });
     return true;
   }
 
@@ -969,8 +1107,8 @@ async function handleApi(request, response, url) {
     const [airports, reports, events, waitlist] = await Promise.all([
       readJson(airportsPath, []),
       readJson(reportsPath, []),
-      readJson(eventsPath, []),
-      readJson(waitlistPath, []),
+      readEvents(),
+      readWaitlist(),
     ]);
     sendJson(response, 200, {
       airports,
@@ -1004,8 +1142,8 @@ async function handleApi(request, response, url) {
     const [airports, reports, events, waitlist, trips] = await Promise.all([
       readJson(airportsPath, []),
       readJson(reportsPath, []),
-      readJson(eventsPath, []),
-      readJson(waitlistPath, []),
+      readEvents(),
+      readWaitlist(),
       readJson(tripsPath, []),
     ]);
 
@@ -1029,6 +1167,11 @@ async function handleApi(request, response, url) {
         ...entry,
         email: entry.email.replace(/^(.{2}).*(@.*)$/, "$1***$2"),
       })),
+      storage: {
+        supabaseConfigured: supabaseConfigured(),
+        eventStore: supabaseConfigured() ? "supabase" : "json",
+        waitlistStore: supabaseConfigured() ? "supabase" : "json",
+      },
       generatedAt: new Date().toISOString(),
     });
     return true;
@@ -1037,8 +1180,8 @@ async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/admin/seo") {
     const [airports, events, waitlist] = await Promise.all([
       readJson(airportsPath, []),
-      readJson(eventsPath, []),
-      readJson(waitlistPath, []),
+      readEvents(),
+      readWaitlist(),
     ]);
     const origin = originFromRequest(request);
     const landingPages = seoLandingPages(origin, airports);
@@ -1066,6 +1209,9 @@ async function handleApi(request, response, url) {
         sitemapUrl: `${origin}/sitemap.xml`,
         robotsUrl: `${origin}/robots.txt`,
         searchConsoleProperty: `${origin}/`,
+        supabaseConfigured: supabaseConfigured(),
+        eventStore: supabaseConfigured() ? "supabase" : "json",
+        waitlistStore: supabaseConfigured() ? "supabase" : "json",
       },
       checklist: [
         {
@@ -1097,6 +1243,12 @@ async function handleApi(request, response, url) {
           label: "Watch queries and landing pages weekly",
           status: events.length ? "active" : "waiting",
           detail: "Use Search Console plus this dashboard.",
+        },
+        {
+          id: "supabase_persistence",
+          label: "Persist events and waitlist in Supabase",
+          status: supabaseConfigured() ? "done" : "todo",
+          detail: "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Render.",
         },
       ],
       landingPages: landingPages.map((page) => ({
@@ -1161,27 +1313,38 @@ async function handleApi(request, response, url) {
   if (request.method === "POST" && url.pathname === "/api/events") {
     const body = await readBody(request);
     const event = normalizeEvent(body);
-    const events = await readJson(eventsPath, []);
-    events.unshift(event);
-    await writeJson(eventsPath, events);
-    sendJson(response, 201, { event, eventCount: events.length });
+    const result = await createEvent(event);
+    sendJson(response, 201, {
+      event: result.event,
+      eventCount: result.eventCount,
+      storage: supabaseConfigured() ? "supabase" : "json",
+    });
     return true;
   }
 
   if (request.method === "POST" && url.pathname === "/api/waitlist") {
     const body = await readBody(request);
     const entry = normalizeWaitlist(body);
-    const waitlist = await readJson(waitlistPath, []);
-    const existing = waitlist.find((item) => item.email === entry.email && item.plan === entry.plan);
+    const existing = await findWaitlistEntry(entry.email, entry.plan);
 
     if (existing) {
-      sendJson(response, 200, { entry: existing, waitlistCount: waitlist.length, duplicate: true });
+      const waitlist = await readWaitlist();
+      sendJson(response, 200, {
+        entry: existing,
+        waitlistCount: waitlist.length,
+        duplicate: true,
+        storage: supabaseConfigured() ? "supabase" : "json",
+      });
       return true;
     }
 
-    waitlist.unshift(entry);
-    await writeJson(waitlistPath, waitlist);
-    sendJson(response, 201, { entry, waitlistCount: waitlist.length, duplicate: false });
+    const result = await createWaitlistEntry(entry);
+    sendJson(response, 201, {
+      entry: result.entry,
+      waitlistCount: result.waitlistCount,
+      duplicate: false,
+      storage: supabaseConfigured() ? "supabase" : "json",
+    });
     return true;
   }
 
