@@ -20,7 +20,7 @@ const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0
 const defaultGoogleSiteVerification = "BzTbHKuBhMDYpjVa2WVY-c_g6B_gY-5hNP-IQLoUzBA";
 const defaultIndexNowKey = "a74f9bb9d6a84b2a92a3fd29b5479d1f8e6d8a35c24b4f188a9c5a6d0e2f531c";
 const supabaseUrl = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
-const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
+const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "");
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -71,9 +71,11 @@ async function supabaseRequest(pathname, { method = "GET", body, prefer } = {}) 
 
   const headers = {
     apikey: supabaseServiceRoleKey,
-    authorization: `Bearer ${supabaseServiceRoleKey}`,
     "content-type": "application/json",
   };
+  if (!supabaseServiceRoleKey.startsWith("sb_")) {
+    headers.authorization = `Bearer ${supabaseServiceRoleKey}`;
+  }
   if (prefer) headers.prefer = prefer;
 
   const response = await fetch(`${supabaseUrl}/rest/v1/${pathname}`, {
