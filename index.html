@@ -183,6 +183,12 @@
                 <select id="report-airport"></select>
               </div>
 
+              <div class="field-block">
+                <label for="report-terminal">Terminal or checkpoint</label>
+                <select id="report-terminal"></select>
+                <p class="helper">Use the checkpoint you just passed, or the closest terminal shown.</p>
+              </div>
+
               <fieldset class="wait-options">
                 <legend>Observed wait</legend>
                 <label><input type="radio" name="wait" value="5" />0-5 min</label>
@@ -198,11 +204,15 @@
                 <p class="helper" id="crowd-label">Normal crowding</p>
               </div>
 
+              <div class="report-preview" id="report-preview" aria-live="polite"></div>
+
               <button class="primary-action" type="submit">
                 <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
                 <span>Submit report</span>
               </button>
             </form>
+
+            <div class="report-feedback" id="report-feedback" hidden></div>
 
             <div class="report-log-block">
               <div class="card-header">

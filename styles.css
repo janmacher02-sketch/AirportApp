@@ -738,6 +738,57 @@ select:focus {
   margin-top: 12px;
 }
 
+.report-preview,
+.report-feedback {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcff;
+  padding: 10px;
+}
+
+.report-preview strong,
+.report-feedback strong {
+  color: var(--primary);
+  font-family: "Geist Mono", monospace;
+}
+
+.report-preview small,
+.report-feedback p {
+  margin: 0;
+  color: var(--quiet);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.report-preview .status-chip {
+  width: fit-content;
+  margin-top: 0;
+}
+
+.report-feedback {
+  grid-template-columns: 28px 1fr;
+  align-items: start;
+  margin-top: 12px;
+  border-color: rgba(19, 121, 91, 0.32);
+  background: var(--green-soft);
+}
+
+.report-feedback[hidden] {
+  display: none;
+}
+
+.report-feedback .material-symbols-outlined {
+  color: var(--green);
+  font-size: 24px;
+}
+
+.report-form button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
 .report-log-block {
   margin-top: 16px;
   border-top: 1px solid var(--line);

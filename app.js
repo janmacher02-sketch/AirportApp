@@ -137,11 +137,13 @@ const state = {
   apiEventCount: 0,
   waitlistCount: 0,
   latestReports: [],
+  lastReport: null,
   toastTimer: null,
 };
 
 const airportSelect = document.querySelector("#airport-select");
 const reportAirport = document.querySelector("#report-airport");
+const reportTerminal = document.querySelector("#report-terminal");
 const quickAirports = document.querySelector("#quick-airports");
 const airportList = document.querySelector("#airport-list");
 const plannerForm = document.querySelector("#planner-form");
@@ -164,6 +166,8 @@ const toast = document.querySelector("#toast");
 const premiumModal = document.querySelector("#premium-modal");
 const reportLog = document.querySelector("#report-log");
 const reportLogCount = document.querySelector("#report-log-count");
+const reportPreview = document.querySelector("#report-preview");
+const reportFeedback = document.querySelector("#report-feedback");
 const validationStats = document.querySelector("#validation-stats");
 const waitlistForm = document.querySelector("#waitlist-form");
 const tripPassEmail = document.querySelector("#trip-pass-email");
@@ -257,7 +261,7 @@ async function persistReport(airport, observedWait, crowd) {
     method: "POST",
     body: JSON.stringify({
       airportCode: airport.code,
-      terminal: airport.selectedTerminal,
+      terminal: reportTerminal.value || airport.selectedTerminal,
       observedWait,
       crowdLevel: crowd,
     }),
@@ -401,6 +405,7 @@ function renderSelectors() {
   reportAirport.innerHTML = options;
   airportSelect.value = state.selectedCode;
   reportAirport.value = state.selectedCode;
+  renderReportTerminalOptions();
 
   quickAirports.innerHTML = airports
     .map(
@@ -408,6 +413,14 @@ function renderSelectors() {
         `<button type="button" class="${airport.code === state.selectedCode ? "is-selected" : ""}" data-select-airport="${airport.code}">${airport.code}</button>`
     )
     .join("");
+}
+
+function renderReportTerminalOptions() {
+  const airport = selectedAirport();
+  reportTerminal.innerHTML = airport.terminals
+    .map((terminal) => `<option value="${terminal}">${terminal}</option>`)
+    .join("");
+  reportTerminal.value = airport.selectedTerminal;
 }
 
 function renderAirportList() {
@@ -548,6 +561,51 @@ function renderReportLog() {
     .join("");
 }
 
+function selectedReportWait() {
+  const formData = new FormData(reportForm);
+  return Number(formData.get("wait") || 20);
+}
+
+function crowdText(value) {
+  return ["Very light", "Light", "Normal", "Busy", "Severe"][Number(value) - 1] || "Normal";
+}
+
+function waitTone(wait) {
+  if (wait >= 35) return { label: "High delay signal", className: "red" };
+  if (wait >= 20) return { label: "Busy signal", className: "amber" };
+  return { label: "Normal signal", className: "green" };
+}
+
+function renderReportPreview() {
+  const airport = selectedAirport();
+  const wait = selectedReportWait();
+  const crowd = Number(crowdLevel.value);
+  const tone = waitTone(wait);
+  reportPreview.innerHTML = `
+    <span class="status-chip ${tone.className}">${tone.label}</span>
+    <strong>${airport.code} ${reportTerminal.value || airport.selectedTerminal}: ${wait} min</strong>
+    <small>${crowdText(crowd)} crowding. This updates the live board and becomes a validation signal.</small>
+  `;
+}
+
+function renderReportFeedback() {
+  if (!state.lastReport) {
+    reportFeedback.hidden = true;
+    reportFeedback.innerHTML = "";
+    return;
+  }
+
+  const { airportCode, terminal, observedWait, crowdLevel, storage } = state.lastReport;
+  reportFeedback.hidden = false;
+  reportFeedback.innerHTML = `
+    <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+    <div>
+      <strong>Report saved for ${airportCode} ${terminal || ""}</strong>
+      <p>${observedWait} min wait, ${crowdText(crowdLevel).toLowerCase()} crowding. Stored in ${storage} and added to the validation dashboard.</p>
+    </div>
+  `;
+}
+
 function renderValidationStats() {
   validationStats.innerHTML = `
     <div class="validation-stat">
@@ -571,6 +629,8 @@ function renderAll() {
   renderTripResult();
   renderDetail();
   renderReportLog();
+  renderReportPreview();
+  renderReportFeedback();
   renderValidationStats();
 }
 
@@ -604,6 +664,7 @@ function closePremium() {
 function updateCrowdLabel() {
   const labels = ["Very light", "Light crowding", "Normal crowding", "Busy", "Severe crowding"];
   crowdLabel.textContent = labels[Number(crowdLevel.value) - 1];
+  renderReportPreview();
 }
 
 async function init() {
@@ -676,6 +737,13 @@ async function init() {
   routeTime.addEventListener("input", renderTripResult);
   departureTime.addEventListener("input", renderTripResult);
   crowdLevel.addEventListener("input", updateCrowdLabel);
+  reportForm.addEventListener("change", (event) => {
+    if (event.target === reportTerminal) {
+      selectedAirport().selectedTerminal = reportTerminal.value;
+      renderDetail();
+    }
+    renderReportPreview();
+  });
 
   terminalTabs.addEventListener("click", (event) => {
     const button = event.target.closest("[data-terminal]");
@@ -715,25 +783,45 @@ async function init() {
     const airport = selectedAirport();
     const observedWait = Number(formData.get("wait"));
     const crowd = Number(crowdLevel.value);
+    const terminal = reportTerminal.value || airport.selectedTerminal;
+    const submitButton = reportForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
     try {
       await persistReport(airport, observedWait, crowd);
       await trackEvent("submit_report", {
         observedWait,
         crowdLevel: crowd,
-        terminal: airport.selectedTerminal,
+        terminal,
+        source: "public_report_flow",
       });
     } catch {
       applyReportLocally(airport, observedWait);
+      state.lastReport = {
+        airportCode: airport.code,
+        terminal,
+        observedWait,
+        crowdLevel: crowd,
+        storage: "local fallback",
+      };
       showToast("Report updated locally. API save failed.");
       renderAll();
+      submitButton.disabled = false;
       return;
     }
+    state.lastReport = {
+      airportCode: airport.code,
+      terminal,
+      observedWait,
+      crowdLevel: crowd,
+      storage: state.apiOnline ? "backend" : "sample mode",
+    };
     renderAll();
     showToast(
       state.apiOnline
         ? `Thanks. ${airport.code} report saved to backend.`
         : `Thanks. ${airport.code} confidence improved in sample mode.`
     );
+    submitButton.disabled = false;
   });
 
   waitlistForm.addEventListener("submit", async (event) => {
