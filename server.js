@@ -1,16 +1,20 @@
 const http = require("node:http");
 const fs = require("node:fs/promises");
+const os = require("node:os");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 
 const rootDir = __dirname;
 const seedDataDir = path.join(rootDir, "data");
-const dataDir = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : seedDataDir;
-const airportsPath = path.join(dataDir, "airports.json");
-const reportsPath = path.join(dataDir, "reports.json");
-const tripsPath = path.join(dataDir, "trips.json");
-const eventsPath = path.join(dataDir, "events.json");
-const waitlistPath = path.join(dataDir, "waitlist.json");
+const requestedDataDir = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : seedDataDir;
+const fallbackDataDir =
+  process.env.NODE_ENV === "production" ? path.join(os.tmpdir(), "airportready-data") : seedDataDir;
+let dataDir = requestedDataDir;
+let airportsPath = path.join(dataDir, "airports.json");
+let reportsPath = path.join(dataDir, "reports.json");
+let tripsPath = path.join(dataDir, "trips.json");
+let eventsPath = path.join(dataDir, "events.json");
+let waitlistPath = path.join(dataDir, "waitlist.json");
 const port = Number(process.env.PORT || 4181);
 const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const defaultGoogleSiteVerification = "BzTbHKuBhMDYpjVa2WVY-c_g6B_gY-5hNP-IQLoUzBA";
@@ -29,6 +33,14 @@ const contentTypes = {
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml; charset=utf-8",
 };
+
+function refreshDataPaths() {
+  airportsPath = path.join(dataDir, "airports.json");
+  reportsPath = path.join(dataDir, "reports.json");
+  tripsPath = path.join(dataDir, "trips.json");
+  eventsPath = path.join(dataDir, "events.json");
+  waitlistPath = path.join(dataDir, "waitlist.json");
+}
 
 async function readJson(filePath, fallback) {
   try {
@@ -260,7 +272,19 @@ async function copySeedDataIfMissing(targetPath, seedFileName, fallback) {
 }
 
 async function ensureDataFiles() {
-  await fs.mkdir(dataDir, { recursive: true });
+  try {
+    await fs.mkdir(dataDir, { recursive: true });
+  } catch (error) {
+    const canUseFallback = ["EACCES", "EPERM", "EROFS"].includes(error.code) && dataDir !== fallbackDataDir;
+    if (!canUseFallback) throw error;
+
+    const unavailableDataDir = dataDir;
+    dataDir = fallbackDataDir;
+    refreshDataPaths();
+    console.warn(`Data directory ${unavailableDataDir} is not writable; using ${dataDir}`);
+    await fs.mkdir(dataDir, { recursive: true });
+  }
+
   await Promise.all([
     copySeedDataIfMissing(airportsPath, "airports.json", []),
     copySeedDataIfMissing(reportsPath, "reports.json", []),
