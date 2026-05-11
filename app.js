@@ -469,8 +469,7 @@ function renderTripResult() {
     </div>
     <p>${countdown} ${plan.airport.code} ${plan.airport.selectedTerminal} is ${plan.airport.status.toLowerCase()} with ${waitText(plan.airport)} security.</p>
     <div class="status-actions">
-      <button type="button" data-open-premium>Trip Pass EUR 2.99</button>
-      <button type="button" data-enable-alert>${state.alertEnabled ? "Alert enabled" : "Add leave-now alert"}</button>
+      <button type="button" data-jump-report>Report current wait</button>
     </div>
   `;
 
@@ -707,15 +706,6 @@ async function init() {
 
     if (event.target === premiumModal) {
       closePremium();
-      return;
-    }
-
-    if (event.target.closest("[data-enable-alert]")) {
-      state.alertEnabled = true;
-      trackEvent("enable_alert", { source: "result_card" });
-      showToast("Leave-now alert enabled for this trip.");
-      renderTripResult();
-      renderDetail();
       return;
     }
 

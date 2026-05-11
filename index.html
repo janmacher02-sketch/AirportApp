@@ -29,24 +29,20 @@
         <nav class="rail-nav">
           <a class="rail-link is-active" href="#planner">
             <span class="material-symbols-outlined" aria-hidden="true">event_note</span>
-            <span>Planner</span>
+            <span>Plan trip</span>
           </a>
           <a class="rail-link" href="#airports">
             <span class="material-symbols-outlined" aria-hidden="true">local_airport</span>
-            <span>Airports</span>
+            <span>Live waits</span>
           </a>
           <a class="rail-link" href="#report">
             <span class="material-symbols-outlined" aria-hidden="true">speed</span>
-            <span>Report</span>
+            <span>Report wait</span>
           </a>
-          <button class="rail-link button-reset" type="button" data-open-premium>
-            <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
-            <span>Trip Pass</span>
-          </button>
         </nav>
         <div class="rail-panel">
-          <p class="eyebrow">Pilot market</p>
-          <p>Central Europe first. Built to scale to Europe, then US and Asia.</p>
+          <p class="eyebrow">Public beta</p>
+          <p>PRG, VIE, BTS, BUD, BER, MUC, and WAW are live for early testing.</p>
         </div>
       </aside>
 
@@ -55,9 +51,6 @@
           <span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span>
           <span>AirportReady</span>
         </a>
-        <button class="icon-button" type="button" data-open-premium aria-label="Open premium plans">
-          <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
-        </button>
       </header>
 
       <main class="workspace">
@@ -65,11 +58,12 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow">Departure planner</p>
-              <h1 id="planner-title">Know when to leave for the airport.</h1>
+              <h1 id="planner-title">When should you leave for the airport?</h1>
+              <p class="intro-copy">Choose your airport, set your flight time, and get one clear leave time.</p>
             </div>
             <div class="live-pill">
               <span class="pulse-dot" aria-hidden="true"></span>
-              <span>Live sample data</span>
+              <span>Public beta</span>
             </div>
           </div>
 
@@ -108,7 +102,7 @@
 
             <button class="primary-action" type="submit">
               <span class="material-symbols-outlined" aria-hidden="true">route</span>
-              <span>Calculate when to leave</span>
+              <span>Get leave time</span>
             </button>
           </form>
 
@@ -133,7 +127,7 @@
           <div class="card-header">
             <div>
               <p class="eyebrow">Airport status</p>
-              <h2 id="airports-title">Central Europe pilot board</h2>
+              <h2 id="airports-title">Current airport waits</h2>
             </div>
             <span class="freshness" id="freshness"></span>
           </div>
@@ -172,7 +166,7 @@
             <div class="card-header">
               <div>
                 <p class="eyebrow">Crowd report</p>
-                <h2 id="report-title">Add a security wait time</h2>
+                <h2 id="report-title">Report what you see</h2>
               </div>
               <span class="confidence-chip" id="report-airport-code"></span>
             </div>
@@ -291,11 +285,11 @@
       <nav class="bottom-nav" aria-label="Mobile navigation">
         <a href="#planner" class="is-active">
           <span class="material-symbols-outlined" aria-hidden="true">event_note</span>
-          <span>Planner</span>
+          <span>Plan</span>
         </a>
         <a href="#airports">
           <span class="material-symbols-outlined" aria-hidden="true">local_airport</span>
-          <span>Airports</span>
+          <span>Waits</span>
         </a>
         <a href="#report">
           <span class="material-symbols-outlined" aria-hidden="true">speed</span>

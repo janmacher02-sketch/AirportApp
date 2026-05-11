@@ -159,9 +159,10 @@ a {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  grid-template-columns: minmax(0, 680px) minmax(320px, 380px);
   gap: 12px;
-  max-width: 1280px;
+  align-items: start;
+  max-width: 1120px;
   margin-left: 260px;
   padding: 16px;
 }
@@ -194,6 +195,14 @@ a {
   padding: 14px;
 }
 
+.intro-copy {
+  max-width: 520px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
 .section-heading,
 .card-header,
 .actions-row {
@@ -214,8 +223,8 @@ h1 {
   max-width: 640px;
   margin-bottom: 0;
   color: var(--primary);
-  font-size: clamp(28px, 4vw, 48px);
-  line-height: 1.02;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.05;
   letter-spacing: 0;
 }
 
@@ -408,10 +417,11 @@ select:focus {
 .result-panel {
   display: grid;
   gap: 12px;
+  position: sticky;
+  top: 16px;
 }
 
 .status-card {
-  min-height: 238px;
   padding: 14px;
   background: var(--primary);
   color: #fff;
@@ -608,7 +618,16 @@ select:focus {
 }
 
 .detail-panel {
-  grid-row: span 2;
+  display: none;
+}
+
+.report-panel {
+  grid-row: auto;
+}
+
+.monetization-panel,
+.validation-panel {
+  display: none;
 }
 
 .terminal-tabs {
@@ -1394,6 +1413,10 @@ input[type="range"] {
   .workspace {
     grid-template-columns: 1fr;
     margin-left: 260px;
+  }
+
+  .result-panel {
+    position: static;
   }
 
   .detail-panel,
