@@ -157,6 +157,10 @@ a {
   display: none;
 }
 
+.mobile-flow {
+  display: none;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 680px) minmax(320px, 380px);
@@ -1443,7 +1447,8 @@ input[type="range"] {
 
 @media (max-width: 760px) {
   body {
-    padding-bottom: 72px;
+    padding-bottom: 64px;
+    background: #f8fbff;
   }
 
   .rail {
@@ -1453,20 +1458,54 @@ input[type="range"] {
   .mobile-bar {
     position: sticky;
     top: 0;
+    z-index: 5;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 58px;
+    min-height: 52px;
     border-bottom: 1px solid var(--line);
-    background: rgba(251, 252, 255, 0.95);
-    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.96);
+    padding: 0 14px;
+    backdrop-filter: blur(10px);
+  }
+
+  .mobile-bar .brand {
+    min-height: 36px;
+    font-size: 15px;
   }
 
   .workspace {
     display: grid;
-    gap: 10px;
+    grid-template-columns: 1fr;
+    gap: 8px;
     margin-left: 0;
-    padding: 10px;
+    padding: 10px 10px 76px;
+  }
+
+  .planner-panel {
+    order: 1;
+    padding: 14px;
+  }
+
+  .result-panel {
+    order: 2;
+  }
+
+  .airport-grid {
+    order: 3;
+  }
+
+  .report-panel {
+    order: 4;
+  }
+
+  .planner-panel,
+  .airport-grid,
+  .report-card,
+  .timeline-card,
+  .status-card {
+    border-radius: 10px;
+    box-shadow: 0 12px 34px -28px rgba(16, 24, 40, 0.6);
   }
 
   .section-heading,
@@ -1484,12 +1523,57 @@ input[type="range"] {
   }
 
   h1 {
-    font-size: 32px;
+    max-width: 330px;
+    font-size: 29px;
+    line-height: 1.04;
+  }
+
+  h2 {
+    font-size: 17px;
+  }
+
+  .intro-copy {
+    max-width: 320px;
+    margin-top: 7px;
+    font-size: 13px;
+  }
+
+  .mobile-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mobile-flow li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fbfcff;
+    padding: 0 9px 0 5px;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .mobile-flow span {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    font-family: "Geist Mono", monospace;
+    font-size: 12px;
   }
 
   .planner-form,
   .security-summary,
-  .status-actions,
   .offer-strip,
   .plans,
   .validation-stats,
@@ -1499,16 +1583,124 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 
+  .planner-form {
+    gap: 9px;
+    margin-top: 12px;
+  }
+
+  .field-block {
+    gap: 5px;
+  }
+
+  .helper {
+    font-size: 11px;
+  }
+
+  .planner-form .helper {
+    display: none;
+  }
+
+  input,
+  select {
+    min-height: 44px;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  .stepper {
+    grid-template-columns: 48px 1fr 48px;
+    border-radius: 8px;
+  }
+
+  .stepper button,
+  .primary-action,
+  .secondary-action {
+    min-height: 46px;
+  }
+
+  .primary-action {
+    border-radius: 8px;
+    font-size: 15px;
+  }
+
+  .quick-airports {
+    display: none;
+  }
+
+  .status-card {
+    padding: 16px;
+  }
+
+  .status-top {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .risk-chip {
+    width: fit-content;
+    order: -1;
+  }
+
+  .leave-time {
+    margin: 10px 0 8px;
+    font-size: clamp(50px, 17vw, 64px);
+  }
+
+  .status-card p {
+    margin-bottom: 0;
+    font-size: 14px;
+  }
+
+  .status-actions {
+    grid-template-columns: 1fr;
+    margin-top: 14px;
+  }
+
+  .status-actions button {
+    min-height: 46px;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--primary);
+  }
+
+  .timeline-card {
+    padding: 12px;
+  }
+
+  .timeline-item {
+    grid-template-columns: 30px 1fr auto;
+    gap: 9px;
+    padding-bottom: 13px;
+  }
+
   .airport-card {
-    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-columns: 50px minmax(0, 1fr) auto;
+    padding: 9px;
+  }
+
+  .airport-card:nth-child(n + 6) {
+    display: none;
+  }
+
+  .airport-code {
+    min-height: 44px;
+    font-size: 17px;
   }
 
   .airport-card .wait-number {
-    grid-column: 2;
+    grid-column: auto;
   }
 
   .wait-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-card {
+    padding: 12px;
+  }
+
+  .report-log-block {
+    display: none;
   }
 
   .report-row {
@@ -1521,19 +1713,21 @@ input[type="range"] {
 
   .bottom-nav {
     position: fixed;
+    z-index: 6;
     right: 0;
     bottom: 0;
     left: 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     border-top: 1px solid var(--line);
-    background: #fff;
-    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.97);
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom));
+    backdrop-filter: blur(10px);
   }
 
   .bottom-nav a {
     justify-content: center;
-    min-height: 50px;
+    min-height: 46px;
     flex-direction: column;
     gap: 3px;
     font-size: 11px;
