@@ -50,8 +50,41 @@ create index if not exists waitlist_signups_created_at_idx
 create index if not exists waitlist_signups_airport_code_idx
   on public.waitlist_signups (airport_code);
 
+create table if not exists public.airport_reports (
+  id uuid primary key,
+  airport_code text not null,
+  terminal text,
+  observed_wait integer not null,
+  crowd_level integer not null default 3,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists airport_reports_created_at_idx
+  on public.airport_reports (created_at desc);
+
+create index if not exists airport_reports_airport_code_idx
+  on public.airport_reports (airport_code);
+
+create table if not exists public.trip_plans (
+  id uuid primary key,
+  airport_code text not null,
+  flight text,
+  departure_at timestamptz,
+  route_minutes integer not null default 0,
+  leave_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists trip_plans_created_at_idx
+  on public.trip_plans (created_at desc);
+
+create index if not exists trip_plans_airport_code_idx
+  on public.trip_plans (airport_code);
+
 alter table public.airport_events enable row level security;
 alter table public.waitlist_signups enable row level security;
+alter table public.airport_reports enable row level security;
+alter table public.trip_plans enable row level security;
 ```
 
 No public RLS policies are needed because AirportReady writes from the server with the service role key.
@@ -83,4 +116,6 @@ Click `Test storage`. The test checks:
 - Supabase env vars
 - `airport_events` table access
 - `waitlist_signups` table access
+- `airport_reports` table access
+- `trip_plans` table access
 - a server-side write into `airport_events`

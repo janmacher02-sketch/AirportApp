@@ -90,7 +90,9 @@ function renderLinks(setup) {
   }</strong>
     </a>
     <div class="admin-row">
-      <span>Persistent storage<small>Events: ${setup.eventStore} / Waitlist: ${setup.waitlistStore}</small></span>
+      <span>Persistent storage<small>Events: ${setup.eventStore} / Waitlist: ${setup.waitlistStore} / Reports: ${
+    setup.reportStore || "json"
+  } / Trips: ${setup.tripStore || "json"}</small></span>
       <strong class="status-pill ${setup.supabaseConfigured ? "status-done" : "status-todo"}">${
     setup.supabaseConfigured ? "Supabase" : "JSON"
   }</strong>

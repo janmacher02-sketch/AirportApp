@@ -136,6 +136,52 @@ function fromWaitlistRow(row) {
   };
 }
 
+function toReportRow(report) {
+  return {
+    id: report.id,
+    airport_code: report.airportCode,
+    terminal: report.terminal,
+    observed_wait: report.observedWait,
+    crowd_level: report.crowdLevel,
+    created_at: report.createdAt,
+  };
+}
+
+function fromReportRow(row) {
+  return {
+    id: row.id,
+    airportCode: row.airport_code,
+    terminal: row.terminal,
+    observedWait: row.observed_wait,
+    crowdLevel: row.crowd_level,
+    createdAt: row.created_at,
+  };
+}
+
+function toTripRow(trip) {
+  return {
+    id: trip.id,
+    airport_code: trip.airportCode,
+    flight: trip.flight,
+    departure_at: trip.departureAt || null,
+    route_minutes: trip.routeMinutes,
+    leave_at: trip.leaveAt || null,
+    created_at: trip.createdAt,
+  };
+}
+
+function fromTripRow(row) {
+  return {
+    id: row.id,
+    airportCode: row.airport_code,
+    flight: row.flight,
+    departureAt: row.departure_at,
+    routeMinutes: row.route_minutes,
+    leaveAt: row.leave_at,
+    createdAt: row.created_at,
+  };
+}
+
 async function readEvents() {
   if (!supabaseConfigured()) return readJson(eventsPath, []);
   const rows = await supabaseRequest("airport_events?select=*&order=created_at.desc&limit=5000");
@@ -194,6 +240,84 @@ async function createWaitlistEntry(entry) {
   return { entry, waitlistCount: waitlist.length };
 }
 
+async function readReports() {
+  if (!supabaseConfigured()) return readJson(reportsPath, []);
+  try {
+    const rows = await supabaseRequest("airport_reports?select=*&order=created_at.desc&limit=5000");
+    return rows.map(fromReportRow);
+  } catch (error) {
+    console.warn(`Supabase airport_reports unavailable; using JSON fallback: ${error.message}`);
+    return readJson(reportsPath, []);
+  }
+}
+
+async function createReport(report) {
+  if (!supabaseConfigured()) {
+    const reports = await readJson(reportsPath, []);
+    reports.unshift(report);
+    await writeJson(reportsPath, reports);
+    return { report, reports };
+  }
+
+  try {
+    await supabaseRequest("airport_reports", {
+      method: "POST",
+      body: toReportRow(report),
+      prefer: "return=minimal",
+    });
+  } catch (error) {
+    console.warn(`Supabase airport_reports write failed; using JSON fallback: ${error.message}`);
+    const reports = await readJson(reportsPath, []);
+    reports.unshift(report);
+    await writeJson(reportsPath, reports);
+    return { report, reports, storage: "json" };
+  }
+  const reports = await readReports();
+  return { report, reports, storage: "supabase" };
+}
+
+async function readTrips() {
+  if (!supabaseConfigured()) return readJson(tripsPath, []);
+  try {
+    const rows = await supabaseRequest("trip_plans?select=*&order=created_at.desc&limit=5000");
+    return rows.map(fromTripRow);
+  } catch (error) {
+    console.warn(`Supabase trip_plans unavailable; using JSON fallback: ${error.message}`);
+    return readJson(tripsPath, []);
+  }
+}
+
+async function createTrip(trip) {
+  if (!supabaseConfigured()) {
+    const trips = await readJson(tripsPath, []);
+    trips.unshift(trip);
+    await writeJson(tripsPath, trips);
+    return { trip, tripCount: trips.length };
+  }
+
+  try {
+    await supabaseRequest("trip_plans", {
+      method: "POST",
+      body: toTripRow(trip),
+      prefer: "return=minimal",
+    });
+  } catch (error) {
+    console.warn(`Supabase trip_plans write failed; using JSON fallback: ${error.message}`);
+    const trips = await readJson(tripsPath, []);
+    trips.unshift(trip);
+    await writeJson(tripsPath, trips);
+    return { trip, tripCount: trips.length, storage: "json" };
+  }
+  const trips = await readTrips();
+  return { trip, tripCount: trips.length, storage: "supabase" };
+}
+
+async function readAirportsWithReports() {
+  const [airports, reports] = await Promise.all([readJson(airportsPath, []), readReports()]);
+  [...reports].reverse().forEach((report) => applyReportToAirports(airports, report));
+  return { airports, reports };
+}
+
 async function testSupabaseStorage() {
   if (!supabaseConfigured()) {
     return {
@@ -222,6 +346,20 @@ async function testSupabaseStorage() {
     checks.push({ name: "waitlist_signups table", ok: true });
   } catch (error) {
     checks.push({ name: "waitlist_signups table", ok: false, error: error.message });
+  }
+
+  try {
+    await supabaseRequest("airport_reports?select=id&limit=1");
+    checks.push({ name: "airport_reports table", ok: true });
+  } catch (error) {
+    checks.push({ name: "airport_reports table", ok: false, error: error.message });
+  }
+
+  try {
+    await supabaseRequest("trip_plans?select=id&limit=1");
+    checks.push({ name: "trip_plans table", ok: true });
+  } catch (error) {
+    checks.push({ name: "trip_plans table", ok: false, error: error.message });
   }
 
   const canWriteEvent = checks.find((check) => check.name === "airport_events table" && check.ok);
@@ -1192,12 +1330,7 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/airports") {
-    const [airports, reports, events, waitlist] = await Promise.all([
-      readJson(airportsPath, []),
-      readJson(reportsPath, []),
-      readEvents(),
-      readWaitlist(),
-    ]);
+    const [{ airports, reports }, events, waitlist] = await Promise.all([readAirportsWithReports(), readEvents(), readWaitlist()]);
     sendJson(response, 200, {
       airports,
       reportCount: reports.length,
@@ -1211,7 +1344,7 @@ async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname.startsWith("/api/airports/")) {
     const airportCode = url.pathname.split("/").pop().toUpperCase();
-    const [airports, reports] = await Promise.all([readJson(airportsPath, []), readJson(reportsPath, [])]);
+    const { airports, reports } = await readAirportsWithReports();
     const airport = airports.find((item) => item.code === airportCode);
 
     if (!airport) {
@@ -1227,12 +1360,11 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin") {
-    const [airports, reports, events, waitlist, trips] = await Promise.all([
-      readJson(airportsPath, []),
-      readJson(reportsPath, []),
+    const [{ airports, reports }, events, waitlist, trips] = await Promise.all([
+      readAirportsWithReports(),
       readEvents(),
       readWaitlist(),
-      readJson(tripsPath, []),
+      readTrips(),
     ]);
 
     sendJson(response, 200, {
@@ -1259,6 +1391,8 @@ async function handleApi(request, response, url) {
         supabaseConfigured: supabaseConfigured(),
         eventStore: supabaseConfigured() ? "supabase" : "json",
         waitlistStore: supabaseConfigured() ? "supabase" : "json",
+        reportStore: supabaseConfigured() ? "supabase" : "json",
+        tripStore: supabaseConfigured() ? "supabase" : "json",
       },
       generatedAt: new Date().toISOString(),
     });
@@ -1300,6 +1434,8 @@ async function handleApi(request, response, url) {
         supabaseConfigured: supabaseConfigured(),
         eventStore: supabaseConfigured() ? "supabase" : "json",
         waitlistStore: supabaseConfigured() ? "supabase" : "json",
+        reportStore: supabaseConfigured() ? "supabase" : "json",
+        tripStore: supabaseConfigured() ? "supabase" : "json",
       },
       checklist: [
         {
@@ -1334,7 +1470,7 @@ async function handleApi(request, response, url) {
         },
         {
           id: "supabase_persistence",
-          label: "Persist events and waitlist in Supabase",
+          label: "Persist events, waitlist, reports, and trips in Supabase",
           status: supabaseConfigured() ? "done" : "todo",
           detail: "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Render.",
         },
@@ -1370,25 +1506,32 @@ async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname === "/api/reports") {
     const limit = Math.min(25, Math.max(1, Number(url.searchParams.get("limit") || 5)));
-    const reports = await readJson(reportsPath, []);
-    sendJson(response, 200, { reports: reports.slice(0, limit), reportCount: reports.length });
+    const reports = await readReports();
+    sendJson(response, 200, {
+      reports: reports.slice(0, limit),
+      reportCount: reports.length,
+      storage: supabaseConfigured() ? "supabase" : "json",
+    });
     return true;
   }
 
   if (request.method === "POST" && url.pathname === "/api/reports") {
     const body = await readBody(request);
     const report = normalizeAirportReport(body);
-    const [airports, reports] = await Promise.all([readJson(airportsPath, []), readJson(reportsPath, [])]);
-    applyReportToAirports(airports, report);
-    reports.unshift(report);
-    await Promise.all([writeJson(airportsPath, airports), writeJson(reportsPath, reports)]);
-    sendJson(response, 201, { report, airports, latestReports: reports.slice(0, 5), reportCount: reports.length });
+    const result = await createReport(report);
+    const { airports, reports } = await readAirportsWithReports();
+    sendJson(response, 201, {
+      report,
+      airports,
+      latestReports: reports.slice(0, 5),
+      reportCount: reports.length,
+      storage: result.storage || (supabaseConfigured() ? "supabase" : "json"),
+    });
     return true;
   }
 
   if (request.method === "POST" && url.pathname === "/api/trips") {
     const body = await readBody(request);
-    const trips = await readJson(tripsPath, []);
     const trip = {
       id: randomUUID(),
       airportCode: String(body.airportCode || "").toUpperCase(),
@@ -1398,9 +1541,12 @@ async function handleApi(request, response, url) {
       leaveAt: String(body.leaveAt || ""),
       createdAt: new Date().toISOString(),
     };
-    trips.unshift(trip);
-    await writeJson(tripsPath, trips);
-    sendJson(response, 201, { trip });
+    const result = await createTrip(trip);
+    sendJson(response, 201, {
+      trip: result.trip,
+      tripCount: result.tripCount,
+      storage: result.storage || (supabaseConfigured() ? "supabase" : "json"),
+    });
     return true;
   }
 
