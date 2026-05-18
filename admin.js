@@ -5,6 +5,7 @@ const eventsBySourceEl = document.querySelector("#events-by-source");
 const eventsByPageEl = document.querySelector("#events-by-page");
 const latestEventsEl = document.querySelector("#latest-events");
 const latestWaitlistEl = document.querySelector("#latest-waitlist");
+const goalFunnelEl = document.querySelector("#goal-funnel");
 const refreshButton = document.querySelector("#refresh-admin");
 const toastEl = document.querySelector("#toast");
 
@@ -58,6 +59,20 @@ function renderList(target, items, mapper, emptyText) {
   target.innerHTML = items.map(mapper).join("");
 }
 
+function renderGoalFunnel(goals) {
+  goalFunnelEl.innerHTML = (goals || [])
+    .map(
+      (goal) => `
+        <div class="goal-step">
+          <span>${goal.label}</span>
+          <strong>${goal.value}</strong>
+          <small>${goal.note}</small>
+        </div>
+      `
+    )
+    .join("");
+}
+
 async function loadAdmin() {
   const data = await api("/api/admin");
   totalsEl.innerHTML = `
@@ -68,6 +83,7 @@ async function loadAdmin() {
     <div class="validation-stat"><span>Trip plans</span><strong>${data.totals.trips}</strong></div>
   `;
 
+  renderGoalFunnel(data.goals);
   renderKeyValues(eventsByTypeEl, data.eventsByType, "No tracked events yet.");
   renderKeyValues(signalsByAirportEl, data.eventsByAirport, "No airport events yet.");
   renderKeyValues(eventsBySourceEl, data.eventsBySource, "No source data yet.");

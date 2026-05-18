@@ -1304,6 +1304,39 @@ input[type="range"] {
   margin-bottom: 14px;
 }
 
+.admin-goals-card {
+  margin-bottom: 14px;
+}
+
+.goal-funnel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.goal-step {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcff;
+  padding: 12px;
+}
+
+.goal-step span,
+.goal-step small {
+  color: var(--quiet);
+  font-size: 12px;
+}
+
+.goal-step strong {
+  color: var(--primary);
+  font-family: "Geist Mono", monospace;
+  font-size: 24px;
+  line-height: 1;
+}
+
 .admin-list {
   display: grid;
   gap: 8px;
@@ -1763,6 +1796,10 @@ input[type="range"] {
   }
 
   .admin-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .goal-funnel {
     grid-template-columns: 1fr;
   }
 

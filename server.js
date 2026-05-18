@@ -468,6 +468,11 @@ function sendError(response, error) {
   });
 }
 
+function conversionRate(value, base) {
+  if (!base) return "0%";
+  return `${Math.round((value / base) * 100)}%`;
+}
+
 function normalizeAirportReport(input) {
   const airportCode = String(input.airportCode || "").toUpperCase();
   const observedWait = Number(input.observedWait);
@@ -719,6 +724,15 @@ function seoLandingPages(origin, airports) {
       priority: "0.9",
     },
     {
+      path: "/airports",
+      url: `${origin}/airports`,
+      title: "Airport security wait times by airport",
+      intent: "Directory",
+      eventPage: "airports_index",
+      cta: "airport_pages",
+      priority: "0.8",
+    },
+    {
       path: "/guides/airport-security-wait-times",
       url: `${origin}/guides/airport-security-wait-times`,
       title: "Airport security wait times guide",
@@ -908,6 +922,77 @@ async function renderHowEarlyPage(request, response, code) {
     </main>
     ${acquisitionTrackingScript("how_early_page", airport.code)}
     ${landingWaitlistScript("how_early_page")}
+  </body>
+</html>`;
+
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(html);
+}
+
+async function renderAirportsIndexPage(request, response) {
+  const origin = originFromRequest(request);
+  const airports = await readJson(airportsPath, []);
+  const rows = airports
+    .slice()
+    .sort((a, b) => String(a.code || "").localeCompare(String(b.code || "")))
+    .map((airport) => {
+      const code = String(airport.code || "").toLowerCase();
+      const name = String(airport.name || "").trim();
+      const city = String(airport.city || "").trim();
+      const label = [name, city ? `(${city})` : ""].filter(Boolean).join(" ");
+      return `<li><a href="/airports/${escapeHtml(code)}">${escapeHtml(
+        label || airport.code
+      )}</a><span class="sub"> · <a href="/airports/${escapeHtml(
+        code
+      )}/security-wait-time">security wait</a> · <a href="/airports/${escapeHtml(
+        code
+      )}/how-early-to-arrive">how early</a></span></li>`;
+    })
+    .join("\n");
+
+  const canonicalUrl = `${origin}/airports`;
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    ${googleVerificationMeta()}
+    <meta name="description" content="Browse airport security wait time pages and arrival guidance by airport code." />
+    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:title" content="Airport security wait times by airport | AirportReady" />
+    <meta property="og:description" content="Browse airport security wait time pages and arrival guidance by airport code." />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:type" content="website" />
+    <title>Airport security wait times by airport | AirportReady</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      main { max-width: 980px; margin: 0 auto; padding: 20px 16px; }
+      .intro { color: rgba(255,255,255,.78); }
+      ul { list-style: none; padding-left: 0; margin: 16px 0 0; }
+      li { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+      a { color: inherit; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .sub { color: rgba(255,255,255,.68); }
+      footer { max-width: 980px; margin: 0 auto; padding: 18px 16px 28px; color: rgba(255,255,255,.6); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Airports</h1>
+      <p class="intro">Pick an airport to see security wait estimates and a practical arrival buffer.</p>
+      <ul>
+        ${rows || "<li>No airports loaded.</li>"}
+      </ul>
+    </main>
+    <footer>
+      <a href="/tools/airport-arrival-calculator">Airport arrival calculator</a>
+      <span class="sub"> · </span>
+      <a href="/guides/how-long-before-flight-should-i-arrive">Arrival guide</a>
+    </footer>
   </body>
 </html>`;
 
@@ -1366,6 +1451,12 @@ async function handleApi(request, response, url) {
       readWaitlist(),
       readTrips(),
     ]);
+    const eventsByType = byCount(events, (event) => event.eventType);
+    const pageViews = Number(eventsByType.page_view || 0);
+    const calculatedTrips = Number(eventsByType.calculate_trip || trips.length || 0);
+    const savedReports = reports.length;
+    const waitlistSignups = waitlist.length;
+    const organicViews = events.filter((event) => event.metadata && event.metadata.acquisitionSource === "organic_search").length;
 
     sendJson(response, 200, {
       totals: {
@@ -1375,7 +1466,29 @@ async function handleApi(request, response, url) {
         waitlist: waitlist.length,
         trips: trips.length,
       },
-      eventsByType: byCount(events, (event) => event.eventType),
+      goals: [
+        {
+          label: "Visitors",
+          value: pageViews,
+          note: `${organicViews} organic search`,
+        },
+        {
+          label: "Trip calculations",
+          value: calculatedTrips,
+          note: `${conversionRate(calculatedTrips, pageViews)} of visitors`,
+        },
+        {
+          label: "Crowd reports",
+          value: savedReports,
+          note: `${conversionRate(savedReports, pageViews)} of visitors`,
+        },
+        {
+          label: "Waitlist",
+          value: waitlistSignups,
+          note: `${conversionRate(waitlistSignups, pageViews)} of visitors`,
+        },
+      ],
+      eventsByType,
       eventsByAirport: byCount(events, (event) => event.airportCode),
       eventsBySource: byCount(events, (event) => event.metadata && event.metadata.acquisitionSource),
       eventsByPage: byCount(events, (event) => event.metadata && event.metadata.page),
@@ -1627,6 +1740,11 @@ async function serveStatic(request, response, url) {
 
   if (url.pathname === "/guides/how-long-before-flight-should-i-arrive") {
     await renderHowLongBeforeFlightGuidePage(request, response);
+    return;
+  }
+
+  if (url.pathname === "/airports") {
+    await renderAirportsIndexPage(request, response);
     return;
   }
 
