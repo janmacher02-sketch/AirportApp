@@ -10,10 +10,8 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATA_DIR
-        value: /var/data
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
+        value: /tmp/airportready-data
+      - key: ALLOW_PAID_SERVICES
+        value: "false"
       - key: GOOGLE_SITE_VERIFICATION
         sync: false

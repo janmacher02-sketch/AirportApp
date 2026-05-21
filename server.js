@@ -19,6 +19,7 @@ const port = Number(process.env.PORT || 4181);
 const host = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const defaultGoogleSiteVerification = "BzTbHKuBhMDYpjVa2WVY-c_g6B_gY-5hNP-IQLoUzBA";
 const defaultIndexNowKey = "a74f9bb9d6a84b2a92a3fd29b5479d1f8e6d8a35c24b4f188a9c5a6d0e2f531c";
+const allowPaidServices = String(process.env.ALLOW_PAID_SERVICES || "").toLowerCase() === "true";
 const supabaseUrl = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "");
 
@@ -61,7 +62,7 @@ async function writeJson(filePath, value) {
 }
 
 function supabaseConfigured() {
-  return Boolean(supabaseUrl && supabaseServiceRoleKey);
+  return Boolean(allowPaidServices && supabaseUrl && supabaseServiceRoleKey);
 }
 
 async function supabaseRequest(pathname, { method = "GET", body, prefer } = {}) {
@@ -321,14 +322,14 @@ async function readAirportsWithReports() {
 async function testSupabaseStorage() {
   if (!supabaseConfigured()) {
     return {
-      configured: false,
-      ok: false,
+      configured: Boolean(supabaseUrl || supabaseServiceRoleKey),
+      ok: true,
       storage: "json",
       checks: [
-        { name: "SUPABASE_URL", ok: Boolean(supabaseUrl) },
-        { name: "SUPABASE_SERVICE_ROLE_KEY", ok: Boolean(supabaseServiceRoleKey) },
+        { name: "ALLOW_PAID_SERVICES", ok: !allowPaidServices, value: allowPaidServices ? "true" : "false" },
+        { name: "JSON fallback storage", ok: true },
       ],
-      message: "Supabase environment variables are not configured.",
+      message: "Free mode is active. Supabase is disabled and the app uses JSON fallback storage.",
     };
   }
 
@@ -1762,9 +1763,11 @@ async function handleApi(request, response, url) {
         },
         {
           id: "supabase_persistence",
-          label: "Persist events, waitlist, reports, and trips in Supabase",
-          status: supabaseConfigured() ? "done" : "todo",
-          detail: "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Render.",
+          label: "Keep storage in free mode",
+          status: supabaseConfigured() ? "manual" : "done",
+          detail: supabaseConfigured()
+            ? "Paid services are enabled. Turn ALLOW_PAID_SERVICES off to avoid Supabase usage."
+            : "Supabase is disabled. Events, waitlist, reports, and trips use JSON fallback storage.",
         },
       ],
       landingPages: landingPages.map((page) => ({
