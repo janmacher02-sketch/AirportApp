@@ -6,6 +6,7 @@ const eventsByPageEl = document.querySelector("#events-by-page");
 const latestEventsEl = document.querySelector("#latest-events");
 const latestWaitlistEl = document.querySelector("#latest-waitlist");
 const goalFunnelEl = document.querySelector("#goal-funnel");
+const decisionCardEl = document.querySelector("#decision-card");
 const refreshButton = document.querySelector("#refresh-admin");
 const toastEl = document.querySelector("#toast");
 
@@ -73,6 +74,30 @@ function renderGoalFunnel(goals) {
     .join("");
 }
 
+function renderDecision(decision) {
+  if (!decision) {
+    decisionCardEl.innerHTML = "";
+    return;
+  }
+
+  decisionCardEl.className = `decision-card ${decision.tone || "waiting"}`;
+  decisionCardEl.innerHTML = `
+    <div>
+      <p class="eyebrow">Decision</p>
+      <h2>${decision.verdict}</h2>
+      <p>${decision.reason}</p>
+    </div>
+    <div class="decision-score">
+      <span>Score</span>
+      <strong>${decision.score}</strong>
+    </div>
+    <div>
+      <p class="eyebrow">Next action</p>
+      <p>${decision.nextAction}</p>
+    </div>
+  `;
+}
+
 async function loadAdmin() {
   const data = await api("/api/admin");
   totalsEl.innerHTML = `
@@ -83,6 +108,7 @@ async function loadAdmin() {
     <div class="validation-stat"><span>Trip plans</span><strong>${data.totals.trips}</strong></div>
   `;
 
+  renderDecision(data.decision);
   renderGoalFunnel(data.goals);
   renderKeyValues(eventsByTypeEl, data.eventsByType, "No tracked events yet.");
   renderKeyValues(signalsByAirportEl, data.eventsByAirport, "No airport events yet.");

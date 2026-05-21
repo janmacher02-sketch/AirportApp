@@ -473,6 +473,53 @@ function conversionRate(value, base) {
   return `${Math.round((value / base) * 100)}%`;
 }
 
+function validationDecision({ pageViews, organicViews, calculatedTrips, savedReports, waitlistSignups }) {
+  const actionCount = calculatedTrips + savedReports + waitlistSignups;
+  const score =
+    Math.min(35, organicViews * 10) +
+    Math.min(25, calculatedTrips * 8) +
+    Math.min(25, savedReports * 12) +
+    Math.min(15, waitlistSignups * 10);
+
+  if (pageViews < 50) {
+    return {
+      verdict: "Keep testing",
+      score,
+      tone: "waiting",
+      reason: "Traffic is still too small for a product decision.",
+      nextAction: "Get more indexed airport pages and watch organic visits for 7 days.",
+    };
+  }
+
+  if (score >= 55 && actionCount >= 5) {
+    return {
+      verdict: "Continue",
+      score,
+      tone: "active",
+      reason: "People are reaching the app and taking useful actions.",
+      nextAction: "Add one stronger conversion step: email alert, saved trip, or airport-specific report prompt.",
+    };
+  }
+
+  if (organicViews >= 5 && actionCount < 3) {
+    return {
+      verdict: "Fix activation",
+      score,
+      tone: "manual",
+      reason: "Search traffic exists, but users are not converting enough.",
+      nextAction: "Simplify the first action and make report/leave-time CTAs more obvious.",
+    };
+  }
+
+  return {
+    verdict: "Wait for more data",
+    score,
+    tone: "waiting",
+    reason: "There are early signals, but not enough volume yet.",
+    nextAction: "Keep SEO pages live and review the funnel after another 50 visits.",
+  };
+}
+
 function normalizeAirportReport(input) {
   const airportCode = String(input.airportCode || "").toUpperCase();
   const observedWait = Number(input.observedWait);
@@ -777,6 +824,24 @@ function seoLandingPages(origin, airports) {
         eventPage: "how_early_page",
         cta: "arrival_alerts",
         priority: airport.code === "PRG" || airport.code === "VIE" ? "0.9" : "0.7",
+      },
+      {
+        path: `/airports/${airport.code.toLowerCase()}/when-to-leave`,
+        url: `${origin}/airports/${airport.code.toLowerCase()}/when-to-leave`,
+        title: `When to leave for ${airport.name}`,
+        intent: "Airport search",
+        eventPage: "airport_when_to_leave_page",
+        cta: "departure_planner",
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.85" : "0.65",
+      },
+      {
+        path: `/airports/${airport.code.toLowerCase()}/arrival-calculator`,
+        url: `${origin}/airports/${airport.code.toLowerCase()}/arrival-calculator`,
+        title: `${airport.name} arrival calculator`,
+        intent: "Airport tool",
+        eventPage: "airport_arrival_calculator_page",
+        cta: "airport_calculator",
+        priority: airport.code === "PRG" || airport.code === "VIE" ? "0.85" : "0.65",
       },
     ]),
   ];
@@ -1335,6 +1400,118 @@ async function renderAirportSecurityWaitPage(request, response, code) {
   response.end(html);
 }
 
+async function renderAirportIntentPage(request, response, code, mode) {
+  const airportCode = String(code || "").toUpperCase();
+  const airports = await readJson(airportsPath, []);
+  const airport = airports.find((item) => item.code === airportCode);
+
+  if (!airport) {
+    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    response.end("Airport not found");
+    return;
+  }
+
+  const origin = originFromRequest(request);
+  const slug = airport.code.toLowerCase();
+  const isCalculator = mode === "arrival-calculator";
+  const canonicalPath = isCalculator ? `/airports/${slug}/arrival-calculator` : `/airports/${slug}/when-to-leave`;
+  const eventPage = isCalculator ? "airport_arrival_calculator_page" : "airport_when_to_leave_page";
+  const waitTextValue = `${airport.wait[0]}-${airport.wait[1]} min`;
+  const airportProcess = airport.checkin + airport.wait[1] + airport.buffer;
+  const totalBuffer = airportProcess + airport.route;
+  const title = isCalculator
+    ? `${airport.name} arrival calculator`
+    : `When to leave for ${airport.name}`;
+  const description = isCalculator
+    ? `Calculate when to arrive at ${airport.name} using travel time, security wait, and flight departure buffers.`
+    : `Decide when to leave for ${airport.name} using current security wait estimates and airport buffers.`;
+  const headline = isCalculator
+    ? `${airport.name} arrival calculator`
+    : `When should you leave for ${airport.name}?`;
+  const intro = isCalculator
+    ? `Use the ${airport.code} arrival calculator to combine travel time, security wait, check-in buffer, and boarding time.`
+    : `For ${airport.code}, the current security estimate is ${waitTextValue}. AirportReady turns that into a practical leave time.`;
+  const canonicalUrl = `${origin}${canonicalPath}`;
+
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002045" />
+    ${googleVerificationMeta()}
+    <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:title" content="${escapeHtml(title)} | AirportReady" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:type" content="article" />
+    <title>${escapeHtml(title)} | AirportReady</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..600,0..1,0&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="public-topbar">
+      <a class="brand" href="/"><span class="material-symbols-outlined" aria-hidden="true">flight_takeoff</span><span>AirportReady</span></a>
+      <nav class="public-nav" aria-label="Public navigation"><a href="/airports/${escapeHtml(slug)}">Airport page</a><a href="/airports/${escapeHtml(slug)}/security-wait-time">Security wait</a></nav>
+    </header>
+    <main class="public-page">
+      <section class="airport-hero">
+        <div>
+          <p class="eyebrow">${isCalculator ? "Airport calculator" : "Departure timing"}</p>
+          <h1>${escapeHtml(headline)}</h1>
+          <p class="public-copy">${escapeHtml(intro)}</p>
+          <div class="public-actions">
+            <a class="primary-link" href="/?airport=${escapeHtml(airport.code)}">Open live planner</a>
+            <a class="secondary-link" href="/airports/${escapeHtml(slug)}/how-early-to-arrive">Arrival guide</a>
+          </div>
+        </div>
+        <aside class="public-status-card">
+          <p class="eyebrow">${escapeHtml(airport.code)} timing</p>
+          <strong>${escapeHtml(String(totalBuffer))}m</strong>
+          <span>${escapeHtml(airport.status)}</span>
+          <p>Security: <b>${escapeHtml(waitTextValue)}</b></p>
+          <p>Travel buffer: <b>${escapeHtml(String(airport.route))} min</b></p>
+        </aside>
+      </section>
+      <section class="public-grid">
+        <article class="public-card">
+          <p class="eyebrow">Calculation</p>
+          <h2>${escapeHtml(airport.code)} departure buffer</h2>
+          <div class="security-summary">
+            <div class="metric"><span>Travel time</span><strong>${escapeHtml(String(airport.route))}m</strong></div>
+            <div class="metric"><span>Check-in buffer</span><strong>${escapeHtml(String(airport.checkin))}m</strong></div>
+            <div class="metric"><span>Security wait</span><strong>${escapeHtml(waitTextValue)}</strong></div>
+            <div class="metric"><span>Boarding buffer</span><strong>${escapeHtml(String(airport.buffer))}m</strong></div>
+          </div>
+        </article>
+        <article class="public-card">
+          <p class="eyebrow">Current status</p>
+          <h2>${escapeHtml(airport.name)} is ${escapeHtml(airport.status.toLowerCase())}</h2>
+          <p class="public-copy">The estimate uses ${escapeHtml(String(airport.reports))} crowd signals with ${escapeHtml(airport.confidence.toLowerCase())} confidence. Use the live planner before leaving because security wait and road time can change.</p>
+          <div class="public-actions"><a class="primary-link" href="/?airport=${escapeHtml(airport.code)}">Calculate my leave time</a></div>
+        </article>
+      </section>
+      ${landingWaitlistBlock({
+        airportCode: airport.code,
+        plan: isCalculator ? "airport_calculator" : "departure_planner",
+        title: isCalculator ? `Get ${airport.code} calculator updates` : `Get ${airport.code} departure alerts`,
+      })}
+    </main>
+    ${acquisitionTrackingScript(eventPage, airport.code)}
+    ${landingWaitlistScript(eventPage)}
+  </body>
+</html>`;
+
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  response.end(html);
+}
+
 async function renderRobots(request, response) {
   const origin = originFromRequest(request);
   response.writeHead(200, {
@@ -1457,6 +1634,7 @@ async function handleApi(request, response, url) {
     const savedReports = reports.length;
     const waitlistSignups = waitlist.length;
     const organicViews = events.filter((event) => event.metadata && event.metadata.acquisitionSource === "organic_search").length;
+    const decision = validationDecision({ pageViews, organicViews, calculatedTrips, savedReports, waitlistSignups });
 
     sendJson(response, 200, {
       totals: {
@@ -1488,6 +1666,7 @@ async function handleApi(request, response, url) {
           note: `${conversionRate(waitlistSignups, pageViews)} of visitors`,
         },
       ],
+      decision,
       eventsByType,
       eventsByAirport: byCount(events, (event) => event.airportCode),
       eventsBySource: byCount(events, (event) => event.metadata && event.metadata.acquisitionSource),
@@ -1757,6 +1936,18 @@ async function serveStatic(request, response, url) {
   const howEarlyMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})\/how-early-to-arrive$/i);
   if (howEarlyMatch) {
     await renderHowEarlyPage(request, response, howEarlyMatch[1]);
+    return;
+  }
+
+  const whenToLeaveMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})\/when-to-leave$/i);
+  if (whenToLeaveMatch) {
+    await renderAirportIntentPage(request, response, whenToLeaveMatch[1], "when-to-leave");
+    return;
+  }
+
+  const airportCalculatorMatch = url.pathname.match(/^\/airports\/([a-z0-9]{3})\/arrival-calculator$/i);
+  if (airportCalculatorMatch) {
+    await renderAirportIntentPage(request, response, airportCalculatorMatch[1], "arrival-calculator");
     return;
   }
 

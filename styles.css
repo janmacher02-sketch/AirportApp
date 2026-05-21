@@ -1304,6 +1304,64 @@ input[type="range"] {
   margin-bottom: 14px;
 }
 
+.decision-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px minmax(260px, 0.72fr);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.decision-card.active {
+  border-color: rgba(19, 121, 91, 0.32);
+}
+
+.decision-card.manual {
+  border-color: rgba(161, 92, 0, 0.32);
+}
+
+.decision-card.waiting {
+  border-color: rgba(0, 97, 165, 0.24);
+}
+
+.decision-card h2 {
+  font-size: 24px;
+}
+
+.decision-card p {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.decision-score {
+  display: grid;
+  place-items: center;
+  min-height: 94px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcff;
+}
+
+.decision-score span {
+  color: var(--quiet);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.decision-score strong {
+  color: var(--primary);
+  font-family: "Geist Mono", monospace;
+  font-size: 32px;
+  line-height: 1;
+}
+
 .admin-goals-card {
   margin-bottom: 14px;
 }
@@ -1797,6 +1855,16 @@ input[type="range"] {
 
   .admin-stats {
     grid-template-columns: 1fr;
+  }
+
+  .decision-card {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-score {
+    place-items: start;
+    min-height: auto;
+    padding: 12px;
   }
 
   .goal-funnel {
